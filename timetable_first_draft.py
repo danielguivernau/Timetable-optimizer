@@ -11,7 +11,10 @@ pref = [
     [3,2,1],
     [2,1,3],
     [1,2,3],
-    [2,3,1]
+    [2,3,1],
+    [1,2,3],
+    [1,2,3],
+    [2,1,3]
 ]
 # How many workers are required for each shift?
 workers_per_shift = [2,1,1]
@@ -27,13 +30,21 @@ for i in range(num_workers):
     for j in range(num_shifts):
         for k in range(num_days):
             x[i,j,k] = model.NewBoolVar(f"x_{i}_{j}_{k}")
-# To add: a worker can only work once a day (or, next two shifts should be zero)
 
 # Constraints:
 # Each shift is covered every day
 for k in range(num_days):
     for j in range(num_shifts):
         model.Add(sum(x[i,j,k] for i in range(num_workers)) == workers_per_shift[j])
+
+# A worker cannot start a shift at least 12 hours (2 shifts) after the last one they did
+for i in range(num_workers):
+    for k in range(num_days):
+        for j in range(num_shifts):
+            if k == (num_days -1) and j > 0: 
+                continue
+            else:
+                model.Add(sum(x[i, (j+s)%num_shifts, k + ((j+s)//num_shifts)] for s in [0,1,2]) == 1)
 
 # Objective function
 objective_terms = []
@@ -48,11 +59,15 @@ solver = cp_model.CpSolver()
 status = solver.Solve(model)
 
 # Outputting results
-if status == cp_model.OPTIMAL or status == cp_model.FEASABLE:
+if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
     print("total preference score:", solver.ObjectiveValue())
     for k in range(num_days):
-        print(f"Day {k}:")
+        print(f"Day {k + 1}:")
         for j in range(num_shifts):
             for i in range(num_workers):
                 if solver.Value(x[i,j,k]) > 0:
-                    print(f"Shift {j} assigned to worker {i}, (preference = {pref[i][j]})")
+                    print(f"Shift {j + 1} assigned to worker {i + 1}, (preference = {pref[i][j]})")
+else: 
+    print("no solution found")
+    print(solver)
+    print(status)
