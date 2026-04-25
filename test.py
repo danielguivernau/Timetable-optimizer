@@ -1,4 +1,3 @@
-for i in range(1,10):
-    print(i)
+from scheduler_model import monthdata
 
-print([['F'] * 10]*5)
+print(monthdata(2026,4))
