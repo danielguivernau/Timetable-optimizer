@@ -61,6 +61,7 @@ def define_model(
     preferences: list[list[int]], 
     workers_per_shift: list, 
     weekly_hours: int,
+    flexibility: int,
     shift_lengths: list[int],
     shift_incompatibilities: list[int],
     management_shift_availability: list[int]|None = None,
@@ -73,6 +74,8 @@ def define_model(
     month -- month to be used
     preferences -- list of list of worker preference for each shift. the lower the better.
     workers_per_shift -- list of how many workers should be assigned to each of the shifts.
+    weekly_hours -- weekly hours a worker should fullfill 
+    flexibility -- flexibility in monthly number of longest shifts allowed per worker, increase if there's feasibility issues
     shift_lengths -- how long each shift is
     shift_incompatibilities -- how many shifts after each shift one isn't allowed to work
     management_shift_availability -- if available, binary list to indicate what shifts management can cover
@@ -155,15 +158,9 @@ def define_model(
             model.Add(work_day[i,d] >= work_day[i,d-1] + work_day[i,d+1] -1) #If a worker works the day before and the day after, they must work that day
 
         # A worker has to work their assigned hours - two forms depending on wether management is available
-    if management_shift_availability is not None:
-        for i in range(num_workers - 1):
-            #model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) == hours_to_work) #Exact hours
-            model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) >= hours_to_work - 1 * max(shift_lengths))
-            model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) <= hours_to_work + 1 * max(shift_lengths))        
-    else: 
-        for i in range(num_workers):
-            model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) >= hours_to_work - 2 * max(shift_lengths))
-            model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) <= hours_to_work + 2 * max(shift_lengths))
+    for i in range(num_workers - management):
+        model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) >= hours_to_work - flexibility * max(shift_lengths))
+        model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) <= hours_to_work + flexibility * max(shift_lengths))        
 
         # if management is available, they can only work on certain shifts
     if management_shift_availability is not None:
@@ -191,6 +188,7 @@ def define_model(
         "management_shift_availability": management_shift_availability,
         "shift_lengths": shift_lengths,
         "weekly_hours": weekly_hours,
+        "flexibility": flexibility,
         "management_weekends": management_weekends
     }
 
@@ -219,6 +217,7 @@ def print_feasibility_analysis(model_data):
     workers_per_shift = model_data["workers_per_shift"]
     shift_lengths = model_data["shift_lengths"]
     weekly_hours = model_data["weekly_hours"]
+    flexibility = model_data["flexibility"]
     management_shift_availability = model_data["management_shift_availability"]
     management_weekends = model_data["management_weekends"]
 
@@ -231,16 +230,10 @@ def print_feasibility_analysis(model_data):
     hours_to_work = int(weekly_hours * actual_weeks)
     max_shift = max(shift_lengths)
     
-    if management_shift_availability is not None:
-        regular_worker_count = num_workers - 1
-        # Range is +/- 1 * max_shift
-        min_hours_per_worker = hours_to_work - (1 * max_shift)
-        max_hours_per_worker = hours_to_work + (1 * max_shift)
-    else:
-        regular_worker_count = num_workers
-        # Range is +/- 2 * max_shift
-        min_hours_per_worker = hours_to_work - (2 * max_shift)
-        max_hours_per_worker = hours_to_work + (2 * max_shift)
+    regular_worker_count = num_workers - int(management_shift_availability is not None)
+        
+    min_hours_per_worker = hours_to_work - (flexibility * max_shift)
+    max_hours_per_worker = hours_to_work + (flexibility * max_shift)
 
     # Total floor and ceiling for regular staff
     total_min_staff_supply = regular_worker_count * min_hours_per_worker
@@ -296,6 +289,7 @@ def output_results(status,solver,model_data):
         num_days = model_data["num_days"]
         num_shifts = model_data["num_shifts"]
         workers_per_shift = model_data["workers_per_shift"]
+        shift_lengths = model_data["shift_lengths"]
         pref = model_data["preferences"]
         manag = model_data["management_shift_availability"]
         
@@ -306,10 +300,12 @@ def output_results(status,solver,model_data):
         for i in range(num_workers):
             total_shifts = sum(solver.Value(x[i, s]) for s in range(num_slots))
             total_preference = sum(solver.Value(x[i, s]) * pref[i][s % num_shifts] for s in range(num_slots))
+            total_hours = sum(solver.Value(x[i, s]) * shift_lengths[s % num_shifts] for s in range(num_slots))
+
             if manag is not None and i == num_workers - 1:
-                print(f"Management total shifts: {total_shifts}, total score: {total_preference}")
+                print(f"Management total shifts: {total_shifts}, total hours: {total_hours},  total score: {total_preference}")
             else: 
-                print(f"Worker {i+1} total shifts: {total_shifts}, total score: {total_preference}")
+                print(f"Worker {i+1} total shifts: {total_shifts}, total hours: {total_hours}, total score: {total_preference}")
         print("\n")
 
         # Creating and filling grid layout for final timetable
