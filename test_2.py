@@ -1,7 +1,11 @@
-#from scheduler_model import monthdata
-#from scheduler_model import calculate_shifts_lengths
+from scheduler_model import get_automaton_transitions
 
-lengths = [1,2,3]
-workers = [2,1,1]
 
-print(sum(lengths[i] * workers[i] for i in range(len(lengths))))
+weekly_hours = [1,4,5,10]
+weeks = 31 / 7
+hours_to_work = [int(i * weeks) for i in weekly_hours]
+
+
+print(int(True == True))
+
+print([1,2,3] + 2)

@@ -54,18 +54,57 @@ def calculate_shifts_incompatibilities(shift_hours: list[list[int]], break_hours
         shift_incompatibilities.append(result)
 
     return shift_incompatibilities
- 
+
+def get_automaton_data(min_breaks: int, max_works: int):
+    """
+    Returns needed data in order to enforce the minimum consecutive break days and the maximum consecutive work days restrictions.
+
+    Keyword_arguments:
+    min_breaks -- minimum consecutive break days 
+    max_works -- maximum consecutive work days 
+    """
+    
+    h, k = max_works, min_breaks
+    # 0 to (h-1): Working states. State 'i' means the worker has worked i+1 consecutive days.
+    # h to (h + k - 2): Mandatory break corridor. Worker is trapped here until min_breaks is satisfied.
+    # (h + k - 1): Stable Off state. Minimum break days have been consecutively fullfilled and now the worker can stay off or wo back to work
+
+    transitions = []
+    # working states (0 to h-1)
+    for i in range(h):
+        if i < h - 1:
+            transitions.append((i, 1, i + 1)) # Can continue working
+        transitions.append((i, 0, h)) # Can go on break
+
+    # break corridor (h to h + k - 2)
+    for i in range(h, h + k - 1):
+        next_state = i + 1
+        transitions.append((i, 0, next_state)) # Can stay on break
+
+    # stable off state (h + k - 1)
+    stable_off = h + k - 1
+    transitions.append((stable_off, 0, stable_off))  # Can stay on break indefinitely
+    transitions.append((stable_off, 1, 0))           # Can return to Work (State 0)
+
+    return {
+    "transitions": transitions,
+    "stable_off": stable_off,
+    "all_states": list(range(stable_off + 1))
+    }
+
 def define_model(
     year: int,
     month:int, 
     preferences: list[list[int]], 
     workers_per_shift: list, 
-    weekly_hours: int,
+    weekly_hours: list[int],
     flexibility: int,
     shift_lengths: list[int],
     shift_incompatibilities: list[int],
+    automaton_data: dict,
     management_shift_availability: list[int]|None = None,
-    management_weekends: bool|None = None):
+    management_weekends: bool|None = None,
+    management_applicability: bool|None = None):
     """
     Defines the model using ortools' CP-SAT model.
 
@@ -74,20 +113,16 @@ def define_model(
     month -- month to be used
     preferences -- list of list of worker preference for each shift. the lower the better.
     workers_per_shift -- list of how many workers should be assigned to each of the shifts.
-    weekly_hours -- weekly hours a worker should fullfill 
+    weekly_hours -- weekly hours each worker should fullfill 
     flexibility -- flexibility in monthly number of longest shifts allowed per worker, increase if there's feasibility issues
     shift_lengths -- how long each shift is
     shift_incompatibilities -- how many shifts after each shift one isn't allowed to work
+    max_works -- maximum number of days a worker can work consecutively 
+    min_breaks -- minimum number of days a worker must have off consecutively
     management_shift_availability -- if available, binary list to indicate what shifts management can cover
-    management_weekends -- if management can work weekends
+    management_weekends -- if available, management can work weekends
+    management_applicability -- if available, whether the consecutive break and work days restrictions apply to management
     """
-
-    # Input data dimensions must match
-    if len(preferences[0]) != len(workers_per_shift):
-        raise ValueError(
-            f"Data mismatch: 'preferences' indicates {len(preferences[0])} shifts per day, "
-            f"but 'workers_per_shift' provides requirements for {len(workers_per_shift)} shifts."
-        )
 
     # Initializing model
     model = cp_model.CpModel()
@@ -96,8 +131,8 @@ def define_model(
     num_shifts = len(preferences[0])
     num_days, days_data = monthdata(year,month)
     num_slots = num_days * num_shifts # flattening shifts and days into one dimensional 'slots' 
-    weeks = num_days / 7
-    hours_to_work = int(weekly_hours * weeks)
+    management = int(management_shift_availability is not None) 
+    management_applicability = int(management_applicability == True)
 
     # Creating the variables
         # Whether worker i is assigned to the slot s
@@ -138,34 +173,36 @@ def define_model(
             upper_bound = min(s + num_blocked + 1, num_slots) 
             model.Add(sum(x[i, slot] for slot in range(s, upper_bound)) <= 1)
 
-        # A worker cannot work for more than 7 days straight 
-    for i in range(num_workers):
-        for d in range(num_days - 6):
-            model.Add(sum(work_day[i, d + offset] for offset in range(7)) <= 6) # In any 7-day window, they must work 6 days or fewer
+        # Workers can work at most max_works consecutively, and must go on break for at least min_breaks consecutively
+    transitions = automaton_data["transitions"]
+    stable_off = automaton_data["stable_off"]
+    all_states = automaton_data["all_states"]
+    
+    for i in range(num_workers - management + management_applicability):
+        # Starting in stable_off assumes they are ready to work on Day 1.
+        timeline = [work_day[i, d] for d in range(num_days)]
+        model.AddAutomaton(timeline, stable_off, all_states, transitions)
 
         # A worker must have at least one weekend off
-    for i in range(num_workers):
+    for i in range(num_workers - management + management_applicability):
         model.Add(sum(is_weekend_off[i,d] for d in range(num_days) if days_data[d] == 5 and d + 1 < num_days) >= 1)
     
         # Check if management must have all weekends off
     if management_weekends == False:
         model.Add(sum(work_day[num_workers-1,d] for d in range(num_days) if days_data[d] >= 5) == 0)
 
-        # A worker cannot have an isolated day off - but management can
-    management = int(management_shift_availability is not None) 
-    for i in range(num_workers - management):
-        for d in range(1,num_days - 1):
-            model.Add(work_day[i,d] >= work_day[i,d-1] + work_day[i,d+1] -1) #If a worker works the day before and the day after, they must work that day
+    weeks = num_days / 7
+    hours_to_work = [int(i * weeks) for i in weekly_hours]
 
-        # A worker has to work their assigned hours - two forms depending on wether management is available
+        # A worker has to work their assigned hours
     for i in range(num_workers - management):
-        model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) >= hours_to_work - flexibility * max(shift_lengths))
-        model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) <= hours_to_work + flexibility * max(shift_lengths))        
+        model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) >= hours_to_work[i] - flexibility * max(shift_lengths))
+        model.Add(sum(x[i, s] * shift_lengths[s % num_shifts] for s in range(num_slots)) <= hours_to_work[i] + flexibility * max(shift_lengths))        
 
-        # if management is available, they can only work on certain shifts
-    if management_shift_availability is not None:
+        # If management is available, they can only work on certain shifts
+    if management == 1:
         model.Add(sum(x[num_workers - 1,s] for s in range(num_slots) if management_shift_availability[s % num_shifts] == 0) == 0)
-        
+
 
     # Objective function
     objective_terms = []
@@ -188,18 +225,24 @@ def define_model(
         "management_shift_availability": management_shift_availability,
         "shift_lengths": shift_lengths,
         "weekly_hours": weekly_hours,
+        "hours_to_work": hours_to_work,
         "flexibility": flexibility,
         "management_weekends": management_weekends
     }
 
-def fit_model(model_data):
+def fit_model(model_data, max_minutes: int|None = None):
     """
     Uses the ortools' solver to fit the model
 
     keyword_arguments:
     model_data -- dictionary outputted by define_model
+    max_minutes -- maximum minutes the solver can take to generate the timetable
     """
     solver = cp_model.CpSolver()
+    solver.parameters.log_search_progress = True
+    solver.parameters.relative_gap_limit = 0.15 # Stop if the solution is within 15% of the theoretical best
+    if max_minutes is not None:
+        solver.parameters.max_time_in_seconds = max_minutes * 60 # Stop at 3 minutes of solver time
     status = solver.Solve(model_data['model'])    
     return status, solver
 
@@ -215,29 +258,26 @@ def print_feasibility_analysis(model_data):
     days_data = model_data["days_data"]
     num_workers = model_data["num_workers"]
     workers_per_shift = model_data["workers_per_shift"]
+    num_shifts = model_data["num_shifts"]
     shift_lengths = model_data["shift_lengths"]
-    weekly_hours = model_data["weekly_hours"]
+    hours_to_work = model_data["hours_to_work"]
     flexibility = model_data["flexibility"]
     management_shift_availability = model_data["management_shift_availability"]
     management_weekends = model_data["management_weekends"]
 
-    # Calculate total exact hours required to cover all shifts across the month
-    daily_required_hours = sum(workers_per_shift[s] * shift_lengths[s] for s in range(len(workers_per_shift)))
+    # Calculate total exact hours of work needed
+    daily_required_hours = sum(workers_per_shift[s] * shift_lengths[s] for s in range(num_shifts))
     total_hours_to_cover = daily_required_hours * num_days
 
-    # Calculate the worker hour target based on weeks in the month
-    actual_weeks = num_days / 7
-    hours_to_work = int(weekly_hours * actual_weeks)
-    max_shift = max(shift_lengths)
-    
+    # Calculate floor and ceiling for worker hours
+    max_shift = max(shift_lengths)    
     regular_worker_count = num_workers - int(management_shift_availability is not None)
         
-    min_hours_per_worker = hours_to_work - (flexibility * max_shift)
-    max_hours_per_worker = hours_to_work + (flexibility * max_shift)
+    min_hours_per_worker = [i - (flexibility * max_shift) for i in hours_to_work]
+    max_hours_per_worker = [i + (flexibility * max_shift) for i in hours_to_work]
 
-    # Total floor and ceiling for regular staff
-    total_min_staff_supply = regular_worker_count * min_hours_per_worker
-    total_max_staff_supply = regular_worker_count * max_hours_per_worker
+    total_min_staff_supply = sum(min_hours_per_worker)
+    total_max_staff_supply = sum(max_hours_per_worker)
 
     # Calculate management capacity
     management_max_capacity = 0
@@ -260,17 +300,18 @@ def print_feasibility_analysis(model_data):
     # Check for Deficit (Not enough hours available to cover shifts)
     if (total_max_staff_supply + management_max_capacity) < total_hours_to_cover:
         shortfall = total_hours_to_cover - (total_max_staff_supply + management_max_capacity)
-        print(f"Status: Infeasible (DEFICIT). Shortfall of {shortfall:.2f} hours. Need more workers.")
+        print(f"Infeasible due to DEFICIT. Shortfall of {shortfall:.2f} hours. Need more workers.")
     
     # Check for Surplus (Too many workers forced to work more hours than exist)
     elif total_min_staff_supply > total_hours_to_cover:
         surplus = total_min_staff_supply - total_hours_to_cover
-        print(f"Status: Infeasible (SURPLUS). Staff are forced to work {surplus:.2f} hours more than shifts available.")
+        print(f"Infeasible due to SURPLUS. Staff are forced to work {surplus:.2f} hours more than shifts available.")
         print("Note: Decrease num_workers or lower the weekly_hours target.")
         
     else:
-        print("Status: Mathematically feasible.")
+        print("Model should be mathematically feasible.")
         print(f"Current hour slack: {(total_max_staff_supply + management_max_capacity) - total_hours_to_cover:.2f} hours.")
+        print("Try relaxing the conditions or increasing the flexibility parameter")
     print("----------------------------\n")
 
 def output_results(status,solver,model_data):
@@ -287,17 +328,20 @@ def output_results(status,solver,model_data):
         num_workers = model_data["num_workers"]
         num_slots = model_data["num_slots"]
         num_days = model_data["num_days"]
+        days_data = model_data["days_data"]
         num_shifts = model_data["num_shifts"]
         workers_per_shift = model_data["workers_per_shift"]
         shift_lengths = model_data["shift_lengths"]
         pref = model_data["preferences"]
         manag = model_data["management_shift_availability"]
+        hours_to_work = model_data["hours_to_work"]
         
         print("Model adjusted : ", status)
         print("total preference score:", solver.ObjectiveValue())
 
         # Shifts and preference score per worker
-        for i in range(num_workers):
+        for i in range(
+            num_workers):
             total_shifts = sum(solver.Value(x[i, s]) for s in range(num_slots))
             total_preference = sum(solver.Value(x[i, s]) * pref[i][s % num_shifts] for s in range(num_slots))
             total_hours = sum(solver.Value(x[i, s]) * shift_lengths[s % num_shifts] for s in range(num_slots))
@@ -305,7 +349,7 @@ def output_results(status,solver,model_data):
             if manag is not None and i == num_workers - 1:
                 print(f"Management total shifts: {total_shifts}, total hours: {total_hours},  total score: {total_preference}")
             else: 
-                print(f"Worker {i+1} total shifts: {total_shifts}, total hours: {total_hours}, total score: {total_preference}")
+                print(f"Worker {i+1} total shifts: {total_shifts}, total hours: {total_hours}, target hours: {hours_to_work[i]}, total score: {total_preference}")
         print("\n")
 
         # Creating and filling grid layout for final timetable
@@ -318,19 +362,19 @@ def output_results(status,solver,model_data):
                     timetable[i][day] = str(shift_type + 1) # +1 for human readability
 
         # Put it in a pandas dataframe
-        column_names = [f"Day {d+1}" for d in range(num_days)]
+        column_names = [f"Day {d+1} (Weekend)" if days_data[d] >= 5 else f"Day {d+1}" for d in range(num_days)]
         if manag is not None:
             index_names = [f"Worker {i+1}" for i in range(num_workers -1)] + ["Management"]
         else:
             index_names = [f"Worker {i+1}" for i in range(num_workers)]
         df = pd.DataFrame(timetable, columns=column_names, index=index_names)
         print(df)
-        df.to_csv("results")
+        df.to_csv("results.csv")
 
     else: 
         print("No solution found")
+        print_feasibility_analysis(model_data)
     
-    print_feasibility_analysis(model_data)
         
     
 
