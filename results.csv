@@ -1,6 +1,7 @@
 ,Day 1,Day 2,Day 3,Day 4 (Weekend),Day 5 (Weekend),Day 6,Day 7,Day 8,Day 9,Day 10,Day 11 (Weekend),Day 12 (Weekend),Day 13,Day 14,Day 15,Day 16,Day 17,Day 18 (Weekend),Day 19 (Weekend),Day 20,Day 21,Day 22,Day 23,Day 24,Day 25 (Weekend),Day 26 (Weekend),Day 27,Day 28,Day 29,Day 30
-Worker 1,Morning,Morning,Morning,F,F,F,Morning,Morning,Morning,Morning,Morning,Morning,F,F,Morning,Morning,Morning,Morning,Morning,Morning,F,F,Morning,Morning,Morning,Morning,Morning,Morning,F,F
-Worker 2,F,Evening,Evening,Evening,Evening,Night,Night,F,F,Evening,Evening,Evening,Evening,Night,Night,F,F,Night,Night,Night,Night,Night,Night,F,F,F,Night,Night,Night,Night
-Worker 3,Night,Night,Night,Night,Night,F,F,Night,Night,Night,Night,Night,Night,F,F,Night,Night,F,F,F,Morning,Morning,Evening,Night,Night,Night,F,F,Morning,Morning
-Worker 4,Evening,F,F,Morning,Morning,Morning,Evening,Evening,Evening,F,F,F,Morning,Morning,F,F,Evening,Evening,Evening,Evening,Evening,Evening,F,F,Evening,Evening,Evening,Evening,Evening,Evening
-Management,F,F,F,F,F,Evening,F,F,F,F,F,F,F,Evening,Evening,Evening,F,F,F,F,F,F,F,Evening,F,F,F,F,F,F
+Worker 1,F,F,Morning,Morning,Morning,Morning,Morning 2,Morning 2,F,F,Morning 2,Morning 2,Morning,Morning,Morning,Morning,F,F,Morning 2,Morning 2,Morning,Morning,Morning,Morning,F,F,Morning 2,Morning 2,Morning,Morning
+Worker 2,Evening,Evening,F,F,Night,Night,Night,Night,Night,Night,F,F,Night,Night,F,F,Evening,Evening,Evening,Evening,Night,Night,F,F,Evening,Evening,Evening,Evening,Night,Night
+Worker 3,Night,Night,Night,F,H,H,H,Evening,Evening,Evening,Night,Night,F,F,Night,Night,Night,Night,Night,Night,F,F,Night,Night,Night,Night,Night,Night,F,F
+Worker 4,Morning,Morning,Evening,Night,F,F,Morning,Morning,F,F,Morning,Morning,Evening,Evening,Evening,Evening,F,F,Morning,Morning,Evening,Evening,Evening,Evening,F,F,Morning,Morning,Evening,Evening
+Worker 5,Morning 2,Morning 2,Morning 2,Morning 2,Morning 2,Morning 2,F,F,Morning 2,Morning 2,F,F,Morning 2,Morning 2,Morning 2,Morning 2,Morning 2,Morning 2,F,F,Morning 2,Morning 2,Morning 2,Morning 2,Morning 2,Morning 2,F,F,Morning 2,Morning 2
+Management,F,F,F,Evening,Evening,Evening,Evening,F,Morning,Morning,Evening,Evening,F,F,F,F,Morning,Morning,F,F,F,F,F,F,Morning,Morning,F,F,F,F

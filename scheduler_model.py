@@ -31,11 +31,15 @@ class Worker:
     works_weekends: bool = True
     min_one_weekend_off: bool = True
     allowed_shifts: list[bool] = None #If it is empty, they can work any shift
+    holidays: list[int] = None
 
     def get_target_hours(self, num_days: int) -> float:
         """Returns the hours this worker should work on a month with num_days days"""
         if self.weekly_hours is not None:
-            return self.weekly_hours * (num_days / 7) 
+            if self.holidays is not None:
+                return self.weekly_hours * ((num_days-len(self.holidays)) / 7) 
+            else:
+                return self.weekly_hours * (num_days / 7) 
         else:
             return None 
 
@@ -68,7 +72,7 @@ def calculate_shifts_incompatibilities(shifts: list[Shift], break_hours: int):
     Calculates how many shifts a worker should be off after each shift.
 
     Keyword arguments:
-    shifts - vector with all shifts defined
+    shifts - vector with all shifts defined, must be sorted by start
     """    
     num_shifts = len(shifts)
     shift_incompatibilities = []
@@ -88,7 +92,7 @@ def calculate_shifts_incompatibilities(shifts: list[Shift], break_hours: int):
 
     return shift_incompatibilities
 
-def get_automaton_data(min_breaks: int, max_works: int):
+def get_consecutivity_automaton_data(min_breaks: int, max_works: int):
     """
     Returns needed data in order to enforce the minimum consecutive break days and the maximum consecutive work days restrictions.
 
@@ -128,11 +132,11 @@ def get_automaton_data(min_breaks: int, max_works: int):
 def define_model(
     year: int,
     month:int, 
-    shifts: List[Shift],
-    workers: List[Worker],
+    shifts: list[Shift],
+    workers: list[Worker],
     flexibility: int,
     break_hours: int,
-    automaton_data: dict):
+    consecutivity_automaton_data: dict):
     """
     Defines the model using ortools' CP-SAT model.
 
@@ -142,7 +146,7 @@ def define_model(
     shifts -- defined shifts
     workers -- defined workers
     flexibility -- flexibility in monthly number of longest shifts allowed per worker, increase if there's feasibility issues
-    automaton_data -- Tuple with needed data to apply to consecutivity constraints
+    consecutivity_automaton_data -- Tuple with needed data to apply to consecutivity constraints
     """
 
     # Initializing model
@@ -197,9 +201,9 @@ def define_model(
 
         # Consecutivity constraints
         if worker.enforce_consecutivity: 
-            transitions = automaton_data["transitions"]
-            stable_off = automaton_data["stable_off"]
-            all_states = automaton_data["all_states"]
+            transitions = consecutivity_automaton_data["transitions"]
+            stable_off = consecutivity_automaton_data["stable_off"]
+            all_states = consecutivity_automaton_data["all_states"]
             model.AddAutomaton([work_day[i, d] for d in range(num_days)], stable_off, all_states, transitions)
 
         # At least one weekend off
@@ -226,6 +230,11 @@ def define_model(
                     # If not allowed, the worker cannot work this shift type on ANY day
                     for d in range(num_days):
                         model.Add(x[i, d * num_shifts + shift_idx] == 0)
+                
+        # Worker can't work on holidays
+        if worker.holidays is not None:
+            for hol_ind in worker.holidays:
+                model.Add(work_day[i, hol_ind-1] == 0)
 
     # Objective function
     objective_terms = [x[i, s] * worker.preferences[s % num_shifts] for i, worker in enumerate(workers) for s in range(num_slots)]
@@ -359,7 +368,8 @@ def output_results(status,solver,model_data):
                 print(f"{worker.name} (Mgmt) - Shifts: {total_shifts}, Hours: {total_hours}, Score: {total_preference}")
             else: 
                 target = worker.get_target_hours(num_days)
-                print(f"{worker.name} - Shifts: {total_shifts}, Hours: {total_hours}, Target: {target:.1f}, Score: {total_preference}")
+                holidays = worker.holidays
+                print(f"{worker.name} - Shifts: {total_shifts}, Hours: {total_hours}, Target: {target:.1f}, Score: {total_preference}, Days on holidays: {len(holidays) if holidays is not None else 0}")
         print("\n")
 
         # 2. Creating and filling grid layout for final timetable
@@ -373,6 +383,11 @@ def output_results(status,solver,model_data):
                 if solver.Value(x[i, s]) > 0:
                     # Using the actual Shift Name instead of an index number for better readability
                     timetable[i][day] = shifts[shift_type].name 
+
+        for i, worker in enumerate(workers): 
+            if worker.holidays is not None:
+                for d in worker.holidays:
+                    timetable[i][d-1] = "H" 
 
         # 3. Put it in a pandas dataframe
         column_names = [f"Day {d+1} (Weekend)" if days_data[d] >= 5 else f"Day {d+1}" for d in range(num_days)]

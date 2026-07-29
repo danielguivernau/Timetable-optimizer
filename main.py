@@ -10,6 +10,7 @@ max_minutes = 1
 # Note: The Night shift is just 23 to 7. The Shift class handles the +24 math for you!
 shifts = [
     sm.Shift(name="Morning",   start=7,  end=15, workers_required=1),
+    sm.Shift(name="Morning 2", start=10, end=18, workers_required=1),
     sm.Shift(name="Evening", start=15, end=23, workers_required=1),
     sm.Shift(name="Night",     start=23, end=7,  workers_required=1)
 ]
@@ -18,13 +19,23 @@ break_hours = 12
 
 # 3. Define Workers
 preferences = [
-    [1, 3, 4],
-    [4, 2, 1],
-    [4, 3, 1],
-    [5, 3, 4],
-    [20, 20, 20] # Management preferences
+    [1, 1, 3, 4],
+    [4, 4, 2, 1],
+    [4, 3, 3, 1],
+    [1, 5, 2, 2],
+    [5, 1, 3, 4],
+    [20, 20, 20, 20] # Management preferences
 ]
-weekly_hours = [40, 40, 40, 40]
+weekly_hours = [40, 40, 40, 40, 40]
+
+holidays = [
+    None,
+    None,
+    [5, 6, 7],
+    None,
+    None,
+    None # Management preferences
+]
 
 workers = []
 
@@ -34,7 +45,8 @@ for i in range(len(preferences) -1):
         sm.Worker(
             name=f"Worker {i+1}", 
             preferences=preferences[i], 
-            weekly_hours=weekly_hours[i]
+            weekly_hours=weekly_hours[i],
+            holidays=holidays[i]
         )
     )
 
@@ -42,20 +54,21 @@ for i in range(len(preferences) -1):
 workers.append(
     sm.Worker(
         name="Management",
-        preferences=preferences[3],
+        preferences=preferences[5],
         weekly_hours=None,          # Managers don't have a fixed weekly hour target
         is_management=True,
-        enforce_consecutivity=False,    # management_applicability = True
-        works_weekends=False,        # management_weekends = True
-        min_one_weekend_off=False,     # Give them a weekend off too!
-        allowed_shifts=[True,True,False]
+        enforce_consecutivity=False,    
+        works_weekends=True,      
+        min_one_weekend_off=False,     
+        allowed_shifts=[True,True,True,False],
+        holidays=holidays[5]
     )
 )
 
 # 4. Consecutivity automaton
 max_works = 6
 min_breaks = 2
-automaton_data = sm.get_automaton_data(min_breaks, max_works)
+consecutivity_automaton_data = sm.get_consecutivity_automaton_data(min_breaks, max_works)
 
 # 5. Build and Solve the Model
 print("Building the model...")
@@ -66,7 +79,7 @@ model_data = sm.define_model(
     workers=workers,
     flexibility=flexibility,
     break_hours= break_hours,
-    automaton_data=automaton_data
+    consecutivity_automaton_data=consecutivity_automaton_data
 )
 
 print("Solving the model...")
