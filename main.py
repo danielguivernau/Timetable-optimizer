@@ -4,15 +4,15 @@ import scheduler_model as sm
 year = 2026
 month = 4
 flexibility = 1
-max_minutes = 1  
+max_fitting_minutes = 1  
 
 # 2. Define Shifts
 # Note: The Night shift is just 23 to 7. The Shift class handles the +24 math for you!
 shifts = [
-    sm.Shift(name="Morning",   start=7,  end=15, workers_required=1),
-    sm.Shift(name="Morning 2", start=10, end=18, workers_required=1),
-    sm.Shift(name="Evening", start=15, end=23, workers_required=1),
-    sm.Shift(name="Night",     start=23, end=7,  workers_required=1)
+    sm.Shift(name="Morning",   start=7 * 60,  end=15 * 60, workers_required=1),
+    sm.Shift(name="Morning 2", start=10 * 60 + 30, end=18 * 60 + 30, workers_required=1),
+    sm.Shift(name="Evening", start=15 * 60, end=23 * 60, workers_required=1),
+    sm.Shift(name="Night",     start=23 * 60 + 1, end=7 * 60 + 1,  workers_required=1)
 ]
 shifts = sorted(shifts, key= lambda s : s.start)
 break_hours = 12
@@ -24,9 +24,10 @@ preferences = [
     [4, 3, 3, 1],
     [1, 5, 2, 2],
     [5, 1, 3, 4],
+    [2, 2, 3, 1],
     [20, 20, 20, 20] # Management preferences
 ]
-weekly_hours = [40, 40, 40, 40, 40]
+weekly_hours = [40, 40, 40, 40, 20, 40]
 
 holidays = [
     None,
@@ -34,6 +35,7 @@ holidays = [
     [5, 6, 7],
     None,
     None,
+    [20,21,22,23],
     None # Management preferences
 ]
 
@@ -83,7 +85,7 @@ model_data = sm.define_model(
 )
 
 print("Solving the model...")
-status, solver = sm.fit_model(model_data, max_minutes)
+status, solver = sm.fit_model(model_data, max_fitting_minutes)
 
 # 6. Output Results
 sm.output_results(status, solver, model_data)

@@ -14,12 +14,12 @@ class Shift:
     @property
     def length(self) -> int:
         """Returns duration, correctly handling overnight shifts"""
-        return (self.end if self.end > self.start else self.end + 24) - self.start
+        return (self.end if self.end > self.start else self.end + (24 * 60)) - self.start
 
     @property
     def end_abs(self) -> int:
         """Returns the end hour on the start day's 24h clock for shift incompatibility calculation"""
-        return self.end if self.end > self.start else self.end + 24
+        return self.end if self.end > self.start else self.end + (24 * 60)
 
 @dataclass 
 class Worker:
@@ -33,13 +33,13 @@ class Worker:
     allowed_shifts: list[bool] = None #If it is empty, they can work any shift
     holidays: list[int] = None
 
-    def get_target_hours(self, num_days: int) -> float:
+    def get_target_minutes(self, num_days: int) -> float:
         """Returns the hours this worker should work on a month with num_days days"""
         if self.weekly_hours is not None:
             if self.holidays is not None:
-                return self.weekly_hours * ((num_days-len(self.holidays)) / 7) 
+                return self.weekly_hours * 60 * ((num_days-len(self.holidays)) / 7) 
             else:
-                return self.weekly_hours * (num_days / 7) 
+                return self.weekly_hours * 60 * (num_days / 7) 
         else:
             return None 
 
@@ -82,9 +82,9 @@ def calculate_shifts_incompatibilities(shifts: list[Shift], break_hours: int):
         while dif < break_hours:
             current_shift = shifts[(i + result +1)%num_shifts]
             days_passed = (i + result +1)//num_shifts        
-            start_hour = current_shift.start
+            start_hour = current_shift.start / 60
 
-            dif = (start_hour + 24 * days_passed) - shifts[i].end_abs
+            dif = (start_hour + 24 * days_passed) - (shifts[i].end_abs / 60)
             if dif < break_hours:
                 result += 1
             
@@ -146,6 +146,7 @@ def define_model(
     shifts -- defined shifts
     workers -- defined workers
     flexibility -- flexibility in monthly number of longest shifts allowed per worker, increase if there's feasibility issues
+    break_hours -- minimum hours all workers should rest after each shift before they can be start another
     consecutivity_automaton_data -- Tuple with needed data to apply to consecutivity constraints
     """
 
@@ -215,13 +216,13 @@ def define_model(
             for d in range(num_days):
                 if days_data[d] >= 5: model.Add(work_day[i, d] == 0)
 
-        # Worker must work their target hours 
-        target_hours = worker.get_target_hours(num_days)
-        if target_hours is not None:
+        # Worker must work their target minutes 
+        target_minutes = worker.get_target_minutes(num_days)
+        if target_minutes is not None:
             max_shift_len = max(shift.length for shift in shifts) 
-            total_hours = sum(x[i, s] * shifts[s % num_shifts].length for s in range(num_slots))
-            model.Add(total_hours >= int(target_hours - (flexibility * max_shift_len)))
-            model.Add(total_hours <= int(target_hours + (flexibility * max_shift_len)))
+            total_minutes = sum(x[i, s] * shifts[s % num_shifts].length for s in range(num_slots))
+            model.Add(total_minutes >= int(target_minutes - (flexibility * max_shift_len)))
+            model.Add(total_minutes <= int(target_minutes + (flexibility * max_shift_len)))
 
         # Workers may only be able to work certain shifts 
         if worker.allowed_shifts is not None:
@@ -253,25 +254,25 @@ def define_model(
         "flexibility": flexibility,
     }
 
-def fit_model(model_data, max_minutes: int|None = None):
+def fit_model(model_data, max_fitting_minutes: int|None = None):
     """
     Uses the ortools' solver to fit the model
 
     keyword_arguments:
     model_data -- dictionary outputted by define_model
-    max_minutes -- maximum minutes the solver can take to generate the timetable
+    max_fitting_minutes -- maximum minutes the solver can take to generate the timetable
     """
     solver = cp_model.CpSolver()
     solver.parameters.log_search_progress = True
-    solver.parameters.relative_gap_limit = 0.1 # Stop if the solution is within 15% of the theoretical best
-    if max_minutes is not None:
-        solver.parameters.max_time_in_seconds = max_minutes * 60 # Stop at 3 minutes of solver time
+    solver.parameters.relative_gap_limit = 0.15 # Stop if the solution is within 15% of the theoretical best
+    if max_fitting_minutes is not None:
+        solver.parameters.max_time_in_seconds = max_fitting_minutes * 60 # User time limit
     status = solver.Solve(model_data['model'])    
     return status, solver
 
-def print_feasibility_analysis(model_data):
+def print_feasibility_analysis(model_data): #TRANSITION TO MINUTES NOT DONE YET
     """
-    Calculates and prints a comparison between required shift hours and available staff capacity.
+    Calculates and prints a comparison between required shift time and available staff capacity.
     Includes checks for both hour deficits (too few staff) and hour surpluses (too many staff).
 
     Keyword arguments:
@@ -284,21 +285,22 @@ def print_feasibility_analysis(model_data):
     flexibility = model_data["flexibility"] 
 
     # 1. Calculate total exact hours of work needed
-    daily_required_hours = sum(shift.workers_required * shift.length for shift in shifts)
+    daily_required_hours = sum(shift.workers_required * shift.length for shift in shifts) / 60
     total_hours_to_cover = daily_required_hours * num_days
 
     # 2. Calculate floor and ceiling for worker hours
-    max_shift_len = max(shift.length for shift in shifts)    
+    max_shift_len = max(shift.length for shift in shifts) / 60
     
     total_min_staff_supply = 0
     total_max_staff_supply = 0
     management_max_capacity = 0
 
     for worker in workers:
-        target_hours = worker.get_target_hours(num_days)
+        target_minutes = worker.get_target_minutes(num_days)
         
         # If they have a target (Regular workers)
-        if target_hours is not None:
+        if target_minutes is not None:
+            target_hours = target_minutes / 60
             total_min_staff_supply += max(0, target_hours - (flexibility * max_shift_len))
             total_max_staff_supply += target_hours + (flexibility * max_shift_len)
             
@@ -307,9 +309,9 @@ def print_feasibility_analysis(model_data):
             available_days = num_days if worker.works_weekends else sum(1 for d in days_data if d < 5)
             # Find the longest shift they are allowed to work
             if worker.allowed_shifts is not None:
-                allowed_lengths = [shifts[i].length for i, is_allowed in enumerate(worker.allowed_shifts) if is_allowed]
+                allowed_lengths = [shifts[i].length / 60 for i, is_allowed in enumerate(worker.allowed_shifts) if is_allowed]
             else:
-                allowed_lengths = [s.length for s in shifts]
+                allowed_lengths = [s.length / 60 for s in shifts]
             # Maximum capacity of management    
             management_max_capacity += available_days * max(allowed_lengths)
 
@@ -361,15 +363,15 @@ def output_results(status,solver,model_data):
         # 1. Shifts and preference score per worker
         for i, worker in enumerate(workers):
             total_shifts = sum(solver.Value(x[i, s]) for s in range(num_slots))
-            total_hours = sum(solver.Value(x[i, s]) * shifts[s % num_shifts].length for s in range(num_slots))
+            total_hours = sum(solver.Value(x[i, s]) * shifts[s % num_shifts].length for s in range(num_slots)) / 60
             total_preference = sum(solver.Value(x[i, s]) * worker.preferences[s % num_shifts] for s in range(num_slots))
             
             if worker.is_management:
                 print(f"{worker.name} (Mgmt) - Shifts: {total_shifts}, Hours: {total_hours}, Score: {total_preference}")
             else: 
-                target = worker.get_target_hours(num_days)
+                target_hours = worker.get_target_minutes(num_days) / 60
                 holidays = worker.holidays
-                print(f"{worker.name} - Shifts: {total_shifts}, Hours: {total_hours}, Target: {target:.1f}, Score: {total_preference}, Days on holidays: {len(holidays) if holidays is not None else 0}")
+                print(f"{worker.name} - Shifts: {total_shifts}, Hours: {total_hours}, Target: {target_hours:.1f}, Score: {total_preference}, Days on holidays: {len(holidays) if holidays is not None else 0}")
         print("\n")
 
         # 2. Creating and filling grid layout for final timetable
