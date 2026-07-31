@@ -194,6 +194,10 @@ def define_model(
     # Worker constraints
     for i, worker in enumerate(workers):
 
+        # At most one shift per day
+        for d in range(num_days):
+            model.Add(sum(x[i, d * num_shifts + s] for s in range(num_shifts)) <= 1)
+
         # Enforcing break hours after each shift
         for s in range(num_slots):
             num_blocked = incompatibilities[s % num_shifts]

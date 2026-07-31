@@ -15,7 +15,7 @@ shifts = [
     sm.Shift(name="Night",     start=23 * 60 + 1, end=7 * 60 + 1,  workers_required=1)
 ]
 shifts = sorted(shifts, key= lambda s : s.start)
-break_hours = 12
+break_hours = 4
 
 # 3. Define Workers
 preferences = [
