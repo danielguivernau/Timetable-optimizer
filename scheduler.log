@@ -1,0 +1,58 @@
+17:30:17 [INFO] root: Building the model...
+17:30:17 [INFO] root: Solving the model...
+17:30:18 [INFO] scheduler_model: Model adjusted: OPTIMAL
+17:30:18 [INFO] scheduler_model: Total preference score: 165.0
+
+17:30:18 [INFO] scheduler_model: Worker 1 - Shifts: 21, Hours: 168.0, Target: 171.4, Score: 21, Days on holidays: 0
+17:30:18 [INFO] scheduler_model: Worker 2 - Shifts: 22, Hours: 176.0, Target: 171.4, Score: 44, Days on holidays: 0
+17:30:18 [INFO] scheduler_model: Worker 3 - Shifts: 19, Hours: 152.0, Target: 154.3, Score: 27, Days on holidays: 3
+17:30:18 [INFO] scheduler_model: Worker 4 - Shifts: 21, Hours: 168.0, Target: 171.4, Score: 21, Days on holidays: 0
+17:30:18 [INFO] scheduler_model: Worker 5 - Shifts: 11, Hours: 88.0, Target: 85.7, Score: 11, Days on holidays: 0
+17:30:18 [INFO] scheduler_model: Worker 6 - Shifts: 18, Hours: 144.0, Target: 148.6, Score: 23, Days on holidays: 4
+17:30:18 [INFO] scheduler_model: Management (Mgmt) - Shifts: 8, Hours: 64.0, Score: 18
+17:30:18 [INFO] scheduler_model: Final Schedule Matrix:
+
+                Day 1      Day 2      Day 3 Day 4 (Weekend) Day 5 (Weekend)      Day 6      Day 7      Day 8      Day 9     Day 10 Day 11 (Weekend) Day 12 (Weekend)     Day 13     Day 14     Day 15     Day 16     Day 17 Day 18 (Weekend) Day 19 (Weekend)     Day 20     Day 21     Day 22     Day 23     Day 24 Day 25 (Weekend) Day 26 (Weekend)     Day 27     Day 28     Day 29     Day 30
+Worker 1    Morning 2  Morning 2  Morning 2               F               F  Morning 2  Morning 2          F          F  Morning 2          Morning          Morning  Morning 2  Morning 2          F          F          F        Morning 2        Morning 2    Morning  Morning 2  Morning 2  Morning 2          F                F        Morning 2    Morning    Morning  Morning 2  Morning 2
+Worker 2      Evening    Evening    Evening               F               F    Evening    Evening    Evening          F          F          Evening          Evening    Evening    Evening    Evening          F          F          Evening          Evening    Evening    Evening    Evening    Evening          F                F          Evening    Evening    Evening    Evening    Evening
+Worker 3        Night      Night      Night           Night               H          H          H          F    Evening    Evening            Night            Night      Night          F          F    Evening    Evening                F                F      Night      Night      Night      Night      Night            Night                F          F      Night      Night          F
+Worker 4            F    Morning    Morning         Morning         Morning    Morning          F          F    Morning    Morning                F                F    Morning    Morning    Morning    Morning    Morning          Morning                F          F    Morning    Morning    Morning    Morning          Morning          Morning          F          F    Morning    Morning
+Worker 5            F          F          F       Morning 2       Morning 2          F          F  Morning 2          F          F        Morning 2        Morning 2          F          F  Morning 2  Morning 2  Morning 2                F                F  Morning 2          F          F          F  Morning 2                F                F          F  Morning 2          F          F
+Worker 6      Morning          F          F               F           Night      Night      Night      Night      Night      Night                F                F          F      Night      Night      Night      Night            Night            Night          H          H          H          H    Evening          Evening            Night      Night          F          F      Night
+Management          F          F          F         Evening         Evening          F    Morning    Morning  Morning 2          F                F                F          F          F          F          F          F                F          Morning          H          H          H          H          F        Morning 2                F  Morning 2          F          F          F
+
+17:30:38 [INFO] root: Building the model...
+17:30:38 [INFO] root: Solving the model...
+17:30:39 [INFO] scheduler_model: Model adjusted: OPTIMAL
+17:30:39 [INFO] scheduler_model: Total preference score: 163.0
+
+17:30:39 [INFO] scheduler_model: Worker 1 - Shifts: 22, Hours: 176.0, Target: 171.4, Score: 22, Days on holidays: 0
+17:30:39 [INFO] scheduler_model: Worker 2 - Shifts: 22, Hours: 176.0, Target: 171.4, Score: 44, Days on holidays: 0
+17:30:39 [INFO] scheduler_model: Worker 3 - Shifts: 19, Hours: 152.0, Target: 154.3, Score: 27, Days on holidays: 3
+17:30:39 [INFO] scheduler_model: Worker 4 - Shifts: 22, Hours: 176.0, Target: 171.4, Score: 24, Days on holidays: 0
+17:30:39 [INFO] scheduler_model: Worker 5 - Shifts: 11, Hours: 88.0, Target: 85.7, Score: 11, Days on holidays: 0
+17:30:39 [INFO] scheduler_model: Worker 6 - Shifts: 18, Hours: 144.0, Target: 148.6, Score: 23, Days on holidays: 4
+17:30:39 [INFO] scheduler_model: Management (Mgmt) - Shifts: 6, Hours: 48.0, Score: 12
+17:30:39 [INFO] scheduler_model: Final Schedule Matrix:
+
+                Day 1      Day 2      Day 3 Day 4 (Weekend) Day 5 (Weekend)      Day 6      Day 7      Day 8      Day 9     Day 10 Day 11 (Weekend) Day 12 (Weekend)     Day 13     Day 14     Day 15     Day 16     Day 17 Day 18 (Weekend) Day 19 (Weekend)     Day 20     Day 21     Day 22     Day 23     Day 24 Day 25 (Weekend) Day 26 (Weekend)     Day 27     Day 28     Day 29     Day 30
+Worker 1            F  Morning 2  Morning 2         Morning         Morning    Morning    Morning          F          F  Morning 2          Morning          Morning  Morning 2  Morning 2  Morning 2          F          F        Morning 2        Morning 2    Morning  Morning 2  Morning 2  Morning 2          F                F                F    Morning    Morning  Morning 2  Morning 2
+Worker 2      Evening    Evening    Evening               F               F    Evening    Evening    Evening          F          F          Evening          Evening    Evening    Evening    Evening          F          F          Evening          Evening    Evening    Evening    Evening    Evening          F                F          Evening    Evening    Evening    Evening    Evening
+Worker 3        Night      Night      Night           Night               H          H          H          F    Evening    Evening            Night            Night      Night          F          F    Evening    Evening                F                F      Night      Night      Night      Night      Night            Night                F          F      Night      Night          F
+Worker 4      Morning    Morning    Morning         Evening         Evening          F          F    Morning    Morning    Morning                F                F    Morning    Morning    Morning    Morning    Morning          Morning                F          F    Morning    Morning    Morning    Morning          Morning          Morning          F          F    Morning    Morning
+Worker 5            F          F          F       Morning 2       Morning 2  Morning 2  Morning 2  Morning 2          F          F        Morning 2        Morning 2          F          F          F          F  Morning 2                F                F  Morning 2          F          F          F  Morning 2                F                F          F  Morning 2          F          F
+Worker 6    Morning 2          F          F               F           Night      Night      Night      Night      Night      Night                F                F          F      Night      Night      Night      Night            Night            Night          H          H          H          H    Evening          Evening            Night      Night          F          F      Night
+Management          F          F          F               F               F          F          F          F  Morning 2          F                F                F          F          F          F  Morning 2          F                F          Morning          H          H          H          H          F        Morning 2        Morning 2  Morning 2          F          F          F
+
+17:31:37 [INFO] root: Building the model...
+17:31:37 [INFO] root: Solving the model...
+17:31:38 [INFO] scheduler_model: Model adjusted: OPTIMAL
+17:31:38 [INFO] scheduler_model: Total preference score: 163.0
+
+17:31:38 [INFO] scheduler_model: Worker 1 - Shifts: 22, Hours: 176.0, Target: 171.4, Score: 22, Days on holidays: 0
+17:31:38 [INFO] scheduler_model: Worker 2 - Shifts: 22, Hours: 176.0, Target: 171.4, Score: 44, Days on holidays: 0
+17:31:38 [INFO] scheduler_model: Worker 3 - Shifts: 19, Hours: 152.0, Target: 154.3, Score: 27, Days on holidays: 3
+17:31:38 [INFO] scheduler_model: Worker 4 - Shifts: 22, Hours: 176.0, Target: 171.4, Score: 24, Days on holidays: 0
+17:31:38 [INFO] scheduler_model: Worker 5 - Shifts: 11, Hours: 88.0, Target: 85.7, Score: 11, Days on holidays: 0
+17:31:38 [INFO] scheduler_model: Worker 6 - Shifts: 18, Hours: 144.0, Target: 148.6, Score: 23, Days on holidays: 4
+17:31:38 [INFO] scheduler_model: Management (Mgmt) - Shifts: 6, Hours: 48.0, Score: 12

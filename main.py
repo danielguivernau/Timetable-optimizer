@@ -1,4 +1,16 @@
 import scheduler_model as sm
+import logging
+
+# Configure logger behavior globally
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+    handlers=[
+        logging.StreamHandler(),               # Print logs to console
+        logging.FileHandler("scheduler.log")   # Save logs to file
+    ]
+)
 
 # 1. General Configuration
 year = 2026
@@ -15,7 +27,6 @@ shifts = [
     sm.Shift(name="Night",     start=23 * 60 + 1, end=7 * 60 + 1,  workers_required=1)
 ]
 shifts = sorted(shifts, key= lambda s : s.start)
-break_hours = 4
 
 # 3. Define Workers
 preferences = [
@@ -48,7 +59,10 @@ for i in range(len(preferences) -1):
             name=f"Worker {i+1}", 
             preferences=preferences[i], 
             weekly_hours=weekly_hours[i],
-            holidays=holidays[i]
+            holidays=holidays[i],
+            break_hours=12,
+            max_consec_works = 6,
+            min_consec_breaks = 2
         )
     )
 
@@ -59,33 +73,26 @@ workers.append(
         preferences=preferences[5],
         weekly_hours=None,          # Managers don't have a fixed weekly hour target
         is_management=True,
-        enforce_consecutivity=False,    
         works_weekends=True,      
         min_one_weekend_off=False,     
         allowed_shifts=[True,True,True,False],
-        holidays=holidays[5]
+        holidays=holidays[5],
+        break_hours = 12
     )
 )
 
-# 4. Consecutivity automaton
-max_works = 6
-min_breaks = 2
-consecutivity_automaton_data = sm.get_consecutivity_automaton_data(min_breaks, max_works)
-
-# 5. Build and Solve the Model
-print("Building the model...")
+# 4. Build and Solve the Model
+logging.info("Building the model...")
 model_data = sm.define_model(
     year=year,
     month=month,
     shifts=shifts,
     workers=workers,
-    flexibility=flexibility,
-    break_hours= break_hours,
-    consecutivity_automaton_data=consecutivity_automaton_data
+    flexibility=flexibility
 )
 
-print("Solving the model...")
+logging.info("Solving the model...")
 status, solver = sm.fit_model(model_data, max_fitting_minutes)
 
-# 6. Output Results
+# 5. Output Results
 sm.output_results(status, solver, model_data)

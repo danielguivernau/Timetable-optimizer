@@ -3,6 +3,9 @@ import pandas as pd
 from ortools.sat.python import cp_model
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
+import logging
+
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Shift:
@@ -27,11 +30,13 @@ class Worker:
     preferences: list[int]
     weekly_hours: Optional[int] = None
     is_management: bool = False
-    enforce_consecutivity: bool = True
     works_weekends: bool = True
     min_one_weekend_off: bool = True
     allowed_shifts: list[bool] = None #If it is empty, they can work any shift
     holidays: list[int] = None
+    break_hours: Optional[int] = None
+    max_consec_works: Optional[int] = None
+    min_consec_breaks: Optional[int] = None
 
     def get_target_minutes(self, num_days: int) -> float:
         """Returns the hours this worker should work on a month with num_days days"""
@@ -44,10 +49,15 @@ class Worker:
             return None 
 
     def __post_init__(self):
-        """Check that regular workers have weekly hours assigned."""
+        """Check that regular workers have weekly hours assigned and that consecutivity days are well defined"""
         if not self.is_management and self.weekly_hours is None:
             raise ValueError(f"Worker '{self.name}' is not management and must have weekly_hours defined.")
     
+        if (self.max_consec_works is None) != (self.min_consec_breaks is None):
+            raise ValueError(
+                f"Worker '{self.name}' has an invalid consecutivity configuration. "
+                f"You must provide BOTH 'max_consec_works' and 'min_consec_breaks' as integers, or set BOTH to None to disable consecutivity tracking."
+            )
 
 def monthdata(year: int, month: int) -> Tuple[int, list[int]]:
     """
@@ -62,7 +72,6 @@ def monthdata(year: int, month: int) -> Tuple[int, list[int]]:
     for week in calendar:
         for i, day in enumerate(week):
             if day > 0:
-                #days_data.append(1 if i == 5 else 0)
                 days_data.append(i)
 
     return len(days_data),days_data
@@ -134,9 +143,7 @@ def define_model(
     month:int, 
     shifts: list[Shift],
     workers: list[Worker],
-    flexibility: int,
-    break_hours: int,
-    consecutivity_automaton_data: dict):
+    flexibility: int):
     """
     Defines the model using ortools' CP-SAT model.
 
@@ -146,8 +153,6 @@ def define_model(
     shifts -- defined shifts
     workers -- defined workers
     flexibility -- flexibility in monthly number of longest shifts allowed per worker, increase if there's feasibility issues
-    break_hours -- minimum hours all workers should rest after each shift before they can be start another
-    consecutivity_automaton_data -- Tuple with needed data to apply to consecutivity constraints
     """
 
     # Initializing model
@@ -158,8 +163,6 @@ def define_model(
     num_days, days_data = monthdata(year,month)
     num_slots = num_days * num_shifts # flattening shifts and days into one dimensional 'slots' 
     
-    incompatibilities = calculate_shifts_incompatibilities(shifts, break_hours)
-
     # 1. Creating the variables
     # Whether worker i is assigned to the slot s
     x = {}
@@ -199,17 +202,22 @@ def define_model(
             model.Add(sum(x[i, d * num_shifts + s] for s in range(num_shifts)) <= 1)
 
         # Enforcing break hours after each shift
-        for s in range(num_slots):
-            num_blocked = incompatibilities[s % num_shifts]
-            upper_bound = min(s + num_blocked + 1, num_slots) 
-            model.Add(sum(x[i, slot] for slot in range(s, upper_bound)) <= 1)
+        if worker.break_hours is not None:
+            incompatibilities = calculate_shifts_incompatibilities(shifts, worker.break_hours)
+            for s in range(num_slots):
+                num_blocked = incompatibilities[s % num_shifts]
+                upper_bound = min(s + num_blocked + 1, num_slots) 
+                model.Add(sum(x[i, slot] for slot in range(s, upper_bound)) <= 1)
 
         # Consecutivity constraints
-        if worker.enforce_consecutivity: 
-            transitions = consecutivity_automaton_data["transitions"]
-            stable_off = consecutivity_automaton_data["stable_off"]
-            all_states = consecutivity_automaton_data["all_states"]
-            model.AddAutomaton([work_day[i, d] for d in range(num_days)], stable_off, all_states, transitions)
+        if worker.max_consec_works is not None and worker.min_consec_breaks is not None: 
+            automaton = get_consecutivity_automaton_data(worker.min_consec_breaks, worker.max_consec_works)
+            model.AddAutomaton(
+                [work_day[i, d] for d in range(num_days)], 
+                automaton["stable_off"], 
+                automaton["all_states"], 
+                automaton["transitions"]
+            )
 
         # At least one weekend off
         if worker.min_one_weekend_off:
@@ -274,7 +282,7 @@ def fit_model(model_data, max_fitting_minutes: int|None = None):
     status = solver.Solve(model_data['model'])    
     return status, solver
 
-def print_feasibility_analysis(model_data): #TRANSITION TO MINUTES NOT DONE YET
+def print_feasibility_analysis(model_data): 
     """
     Calculates and prints a comparison between required shift time and available staff capacity.
     Includes checks for both hour deficits (too few staff) and hour surpluses (too many staff).
@@ -319,29 +327,28 @@ def print_feasibility_analysis(model_data): #TRANSITION TO MINUTES NOT DONE YET
             # Maximum capacity of management    
             management_max_capacity += available_days * max(allowed_lengths)
 
-    print("--- Feasibility Analysis ---")
-    print(f"Total hours required to cover shifts: {total_hours_to_cover:.2f}")
-    print(f"Minimum hours staff must work (Floor): {total_min_staff_supply:.2f}")
-    print(f"Maximum hours staff can work (Ceiling): {total_max_staff_supply:.2f}")
-    print(f"Management max potential capacity:     {management_max_capacity:.2f}")
+    logger.info("--- Feasibility Analysis ---")
+    logger.info(f"Total hours required to cover shifts: {total_hours_to_cover:.2f}")
+    logger.info(f"Minimum hours staff must work (Floor): {total_min_staff_supply:.2f}")
+    logger.info(f"Maximum hours staff can work (Ceiling): {total_max_staff_supply:.2f}")
+    logger.info(f"Management max potential capacity:     {management_max_capacity:.2f}")
     
     # Check for Deficit
     if (total_max_staff_supply + management_max_capacity) < total_hours_to_cover:
         shortfall = total_hours_to_cover - (total_max_staff_supply + management_max_capacity)
-        print(f"Infeasible due to DEFICIT. Shortfall of {shortfall:.2f} hours. Need more workers.")
+        logger.info(f"Infeasible due to DEFICIT. Shortfall of {shortfall:.2f} hours. Need more workers.")
     
     # Check for Surplus
     elif total_min_staff_supply > total_hours_to_cover:
         surplus = total_min_staff_supply - total_hours_to_cover
-        print(f"Infeasible due to SURPLUS. Staff are forced to work {surplus:.2f} hours more than shifts available.")
-        print("Note: Decrease num_workers or lower the weekly_hours target.")
+        logger.info(f"Infeasible due to SURPLUS. Staff are forced to work {surplus:.2f} hours more than shifts available.")
+        logger.info("Note: Decrease num_workers or lower the weekly_hours target.")
         
     else:
-        print("Model should be mathematically feasible.")
+        logger.info("Model should be mathematically feasible.")
         slack = (total_max_staff_supply + management_max_capacity) - total_hours_to_cover
-        print(f"Current hour slack: {slack:.2f} hours.")
-        print("Try relaxing the conditions or increasing the flexibility parameter if solver fails.")
-    print("----------------------------\n")
+        logger.info(f"Current hour slack: {slack:.2f} hours.")
+        logger.info("Try relaxing the conditions or increasing the flexibility parameter if solver fails.")
 
 def output_results(status,solver,model_data):
     """
@@ -361,8 +368,8 @@ def output_results(status,solver,model_data):
         num_shifts = model_data["num_shifts"]
         num_slots = model_data["num_slots"]
         
-        print(f"Model adjusted: {solver.StatusName(status)}")
-        print(f"Total preference score: {solver.ObjectiveValue()}\n")
+        logger.info(f"Model adjusted: {solver.StatusName(status)}")
+        logger.info(f"Total preference score: {solver.ObjectiveValue()}\n")
 
         # 1. Shifts and preference score per worker
         for i, worker in enumerate(workers):
@@ -371,15 +378,13 @@ def output_results(status,solver,model_data):
             total_preference = sum(solver.Value(x[i, s]) * worker.preferences[s % num_shifts] for s in range(num_slots))
             
             if worker.is_management:
-                print(f"{worker.name} (Mgmt) - Shifts: {total_shifts}, Hours: {total_hours}, Score: {total_preference}")
+                logger.info(f"{worker.name} (Mgmt) - Shifts: {total_shifts}, Hours: {total_hours}, Score: {total_preference}")
             else: 
                 target_hours = worker.get_target_minutes(num_days) / 60
                 holidays = worker.holidays
-                print(f"{worker.name} - Shifts: {total_shifts}, Hours: {total_hours}, Target: {target_hours:.1f}, Score: {total_preference}, Days on holidays: {len(holidays) if holidays is not None else 0}")
-        print("\n")
+                logger.info(f"{worker.name} - Shifts: {total_shifts}, Hours: {total_hours}, Target: {target_hours:.1f}, Score: {total_preference}, Days on holidays: {len(holidays) if holidays is not None else 0}")
 
         # 2. Creating and filling grid layout for final timetable
-        # Using 'F' for free/off days as in your original code
         timetable = [['F' for _ in range(num_days)] for _ in range(len(workers))]
         
         for s in range(num_slots):
@@ -400,11 +405,10 @@ def output_results(status,solver,model_data):
         index_names = [worker.name for worker in workers]
         
         df = pd.DataFrame(timetable, columns=column_names, index=index_names)
-        print(df)
         df.to_csv("results.csv")
 
     else: 
-        print("No solution found.")
+        logger.info("No solution found.")
         print_feasibility_analysis(model_data)
     
         
