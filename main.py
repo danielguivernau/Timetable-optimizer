@@ -7,19 +7,17 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
     handlers=[
-        logging.StreamHandler(),               # Print logs to console
-        logging.FileHandler("scheduler.log")   # Save logs to file
+        logging.StreamHandler()               # Print logs to console
     ]
 )
 
 # 1. General Configuration
 year = 2026
 month = 4
-flexibility = 1
+flexibility = 2
 max_fitting_minutes = 1  
 
 # 2. Define Shifts
-# Note: The Night shift is just 23 to 7. The Shift class handles the +24 math for you!
 shifts = [
     sm.Shift(name="Morning",   start=7 * 60,  end=15 * 60, workers_required=1),
     sm.Shift(name="Morning 2", start=10 * 60 + 30, end=18 * 60 + 30, workers_required=1),
@@ -28,58 +26,105 @@ shifts = [
 ]
 shifts = sorted(shifts, key= lambda s : s.start)
 
-# 3. Define Workers
-preferences = [
-    [1, 1, 3, 4],
-    [4, 4, 2, 1],
-    [4, 3, 3, 1],
-    [1, 5, 2, 2],
-    [5, 1, 3, 4],
-    [2, 2, 3, 1],
-    [20, 20, 20, 20] # Management preferences
-]
-weekly_hours = [40, 40, 40, 40, 20, 40]
-
-holidays = [
-    None,
-    None,
-    [5, 6, 7],
-    None,
-    None,
-    [20,21,22,23],
-    None # Management preferences
-]
-
-workers = []
-
-# Add the regular workers
-for i in range(len(preferences) -1):
-    workers.append(
-        sm.Worker(
-            name=f"Worker {i+1}", 
-            preferences=preferences[i], 
-            weekly_hours=weekly_hours[i],
-            holidays=holidays[i],
-            break_hours=12,
-            max_consec_works = 6,
-            min_consec_breaks = 2
-        )
+# 3. Define the workers
+w1 = sm.Worker(
+    name=f"Joseph", 
+    preferences=[1, 1, 3, 4], 
+    weekly_hours=40,
+    is_management=False,
+    works_weekends=True,      
+    min_one_weekend_off=True,     
+    allowed_shifts=[True,True,True,True],
+    holidays=None,
+    break_hours=12,
+    max_consec_works = 6,
+    min_consec_breaks = 2
     )
 
-# Add the Management Worker
-workers.append(
-    sm.Worker(
-        name="Management",
-        preferences=preferences[5],
-        weekly_hours=None,          # Managers don't have a fixed weekly hour target
-        is_management=True,
-        works_weekends=True,      
-        min_one_weekend_off=False,     
-        allowed_shifts=[True,True,True,False],
-        holidays=holidays[5],
-        break_hours = 12
+w2 = sm.Worker(
+    name=f"Jotaro", 
+    preferences=[4, 4, 2, 1],
+    weekly_hours=40,
+    is_management=False,
+    works_weekends=True,      
+    min_one_weekend_off=True,     
+    allowed_shifts=[True,True,True,True],
+    holidays=None,
+    break_hours=12,
+    max_consec_works = 6,
+    min_consec_breaks = 2
     )
-)
+
+w3 = sm.Worker(
+    name=f"Polnaref", 
+    preferences=[4, 3, 3, 1],
+    weekly_hours=40,
+    is_management=False,
+    works_weekends=True,      
+    min_one_weekend_off=True,     
+    allowed_shifts=[True,True,True,True],
+    holidays=[5, 6, 7],
+    break_hours=12,
+    max_consec_works = 6,
+    min_consec_breaks = 2
+    )
+
+w4 = sm.Worker(
+    name=f"Abdol", 
+    preferences=[2, 2, 3, 1],
+    weekly_hours=40,
+    is_management=False,
+    works_weekends=True,      
+    min_one_weekend_off=True,     
+    allowed_shifts=[True,True,True,True],
+    holidays=None,
+    break_hours=12,
+    max_consec_works = 6,
+    min_consec_breaks = 2
+    )
+
+w4 = sm.Worker(
+    name=f"Kakyoin", 
+    preferences=[5, 1, 3, 4],
+    weekly_hours=40,
+    is_management=False,
+    works_weekends=True,      
+    min_one_weekend_off=True,     
+    allowed_shifts=[True,True,True,True],
+    holidays=[20,21,22,23],
+    break_hours=12,
+    max_consec_works = 6,
+    min_consec_breaks = 2
+    )
+
+w5 = sm.Worker(
+    name=f"Iggy", 
+    preferences=[1, 5, 2, 2],
+    weekly_hours=20,
+    is_management=False,
+    works_weekends=True,      
+    min_one_weekend_off=True,     
+    allowed_shifts=[True,True,True,True],
+    holidays=None,
+    break_hours=12,
+    max_consec_works = 6,
+    min_consec_breaks = 2
+    )
+
+w6 = sm.Worker(
+    name=f"Dio", 
+    preferences=[20, 20, 20, 20],
+    is_management=True,
+    works_weekends=True,      
+    min_one_weekend_off=False,     
+    allowed_shifts=[True,True,True,False],
+    holidays=None,
+    break_hours=12,
+    max_consec_works = 6,
+    min_consec_breaks = 2
+    )
+
+workers = [w1,w2,w3,w4,w5,w6]
 
 # 4. Build and Solve the Model
 logging.info("Building the model...")

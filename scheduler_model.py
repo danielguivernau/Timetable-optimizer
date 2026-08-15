@@ -392,7 +392,6 @@ def output_results(status,solver,model_data):
             shift_type = s % num_shifts
             for i in range(len(workers)):
                 if solver.Value(x[i, s]) > 0:
-                    # Using the actual Shift Name instead of an index number for better readability
                     timetable[i][day] = shifts[shift_type].name 
 
         for i, worker in enumerate(workers): 

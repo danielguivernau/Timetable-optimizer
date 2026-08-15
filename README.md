@@ -24,7 +24,7 @@ Represents a defined work block. Time parameters and calculations are handled st
 
 | Parameter / Property | Type | Description |
 | :--- | :--- | :--- |
-| `name` | `str` | Unique identifier for the shift type (e.g., `"Night shift"`)[cite: 1]. |
+| `name` | `str` | Unique identifier for the shift type (e.g., `"Night shift"`). |
 | `start` | `int` | Shift start time expressed in minutes from midnight (e.g., `1410` for 23:30). |
 | `end` | `int` | Shift end time expressed in minutes from midnight (e.g., `450` for 07:30) |
 | `workers_required` | `int` | The number of staff members needed for this shift. |
