@@ -1,13 +1,13 @@
 
 My girlfriend works in a hotel whose reception has workers present around the clock. This means that each month, their management has to put together a schedule to cover all the shifts, taking into account both labour regulations and each worker's preferences. 
 
-Wanting to get back in touch with Operation Research and improve my programming skills, and knowing that scheduling is a classic optimization problem, I wanted to try and create a piece of software that could create these schedules.
+Wanting to get back in touch with Operations Research and improve my programming skills, and knowing that scheduling is a classic optimization problem, I wanted to try and create a piece of software that could create these schedules.
 
 I have included some particularities that might only apply to hotels (or perhaps only my girlfriend's), but they are included as optional parameters that can otherwise be ignored.
 
 # How to use it
 
-You may run the app through it's streamlit interface by clicking on this [link](https://danis-timetable-optimizer.streamlit.app/). Otherwise, you can load this repository on your computer and run `main.py` after including your own data there.
+You may run the app through its streamlit interface by clicking on this [link](https://danis-timetable-optimizer.streamlit.app/). Otherwise, you can load this repository on your computer and run `main.py` after including your own data there.
 
 # How it works
 
@@ -33,7 +33,7 @@ All shifts are then passed in a list sorted by start (ascending) to the model de
 
 ### The `Worker` Dataclass
 
-Represents an individual staff member, their role, contract charasteristics, labor law constraints, and shift preferences.
+Represents an individual staff member, their role, contract characteristics, labor law constraints, and shift preferences.
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
@@ -78,7 +78,7 @@ The engine tracks the schedule using a multidimensional matrix of boolean variab
 *   **Weekend tracking (`is_weekend_off[i, d]`):** A boolean tracking whether a worker has a fully free weekend, contingent on neither Saturday nor Sunday having active `work_day` assignments.
 
 #### 2. Constraints
-To ensure the schedule respects the contractual obligations of all workers and fullfills all the shifts' needs, the script translates our rules into strict mathematical boundaries using `model.Add()`:
+To ensure the schedule respects the contractual obligations of all workers and fulfills all the shifts' needs, the script translates our rules into strict mathematical boundaries using `model.Add()`:
 *   **Strict coverage:** The sum of workers assigned to any given shift slot must exactly equal its `workers_required` parameter.
 *   **Single daily shift:** The sum of shifts assigned to a single worker on any given calendar day must be less than or equal to 1. This condition will generally be made redundant by a normal `Worker.break_hours` parameter.
 *   **Mandatory rest:** Using the calculated incompatibilities matrix, the model limits the sum of assigned shifts within a worker's `break_hours` window to a maximum of 1.
