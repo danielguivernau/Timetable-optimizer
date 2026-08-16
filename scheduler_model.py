@@ -293,25 +293,15 @@ def fit_model(model_data, max_fitting_minutes: int|None = None):
     status = solver.Solve(model_data['model'])    
     return status, solver
 
-def print_feasibility_analysis(model_data): 
-    """
-    Calculates and prints a comparison between required shift time and available staff capacity.
-    Includes checks for both hour deficits (too few staff) and hour surpluses (too many staff).
-
-    Keyword arguments:
-    model_data -- dictionary outputted by define_model
-    """
+def get_feasibility_analysis(model_data) -> str: 
     num_days = model_data["num_days"]
     days_data = model_data["days_data"]
     workers = model_data["workers"]
     shifts = model_data["shifts"]
     flexibility = model_data["flexibility"] 
 
-    # 1. Calculate total exact hours of work needed
     daily_required_hours = sum(shift.workers_required * shift.length for shift in shifts) / 60
     total_hours_to_cover = daily_required_hours * num_days
-
-    # 2. Calculate floor and ceiling for worker hours
     max_shift_len = max(shift.length for shift in shifts) / 60
     
     total_min_staff_supply = 0
@@ -320,46 +310,36 @@ def print_feasibility_analysis(model_data):
 
     for worker in workers:
         target_minutes = worker.get_target_minutes(num_days)
-        
-        # If they have a target (Regular workers)
         if target_minutes is not None:
             target_hours = target_minutes / 60
             total_min_staff_supply += max(0, target_hours - (flexibility * max_shift_len))
             total_max_staff_supply += target_hours + (flexibility * max_shift_len)
-            
-        # If they DON'T have a target (Management)
         else:
             available_days = num_days if worker.works_weekends else sum(1 for d in days_data if d < 5)
-            # Find the longest shift they are allowed to work
             if worker.allowed_shifts is not None:
                 allowed_lengths = [shifts[i].length / 60 for i, is_allowed in enumerate(worker.allowed_shifts) if is_allowed]
             else:
                 allowed_lengths = [s.length / 60 for s in shifts]
-            # Maximum capacity of management    
             management_max_capacity += available_days * max(allowed_lengths)
 
-    logger.info("--- Feasibility Analysis ---")
-    logger.info(f"Total hours required to cover shifts: {total_hours_to_cover:.2f}")
-    logger.info(f"Minimum hours staff must work (Floor): {total_min_staff_supply:.2f}")
-    logger.info(f"Maximum hours staff can work (Ceiling): {total_max_staff_supply:.2f}")
-    logger.info(f"Management max potential capacity:     {management_max_capacity:.2f}")
+    # Build the report string
+    report = "### Feasibility Analysis\n"
+    report += f"- **Total hours required:** {total_hours_to_cover:.2f}\n"
+    report += f"- **Minimum hours staff must work (Floor):** {total_min_staff_supply:.2f}\n"
+    report += f"- **Maximum hours staff can work (Ceiling):** {total_max_staff_supply:.2f}\n"
+    report += f"- **Management max capacity:** {management_max_capacity:.2f}\n\n"
     
-    # Check for Deficit
     if (total_max_staff_supply + management_max_capacity) < total_hours_to_cover:
         shortfall = total_hours_to_cover - (total_max_staff_supply + management_max_capacity)
-        logger.info(f"Infeasible due to DEFICIT. Shortfall of {shortfall:.2f} hours. Need more workers.")
-    
-    # Check for Surplus
+        report += f"DEFICIT: Shortfall of {shortfall:.2f} hours. You need more workers or fewer required shifts."
     elif total_min_staff_supply > total_hours_to_cover:
         surplus = total_min_staff_supply - total_hours_to_cover
-        logger.info(f"Infeasible due to SURPLUS. Staff are forced to work {surplus:.2f} hours more than shifts available.")
-        logger.info("Note: Decrease num_workers or lower the weekly_hours target.")
-        
+        report += f"SURPLUS: Staff are forced to work {surplus:.2f} hours more than shifts available. Decrease target weekly hours."
     else:
-        logger.info("Model should be mathematically feasible.")
         slack = (total_max_staff_supply + management_max_capacity) - total_hours_to_cover
-        logger.info(f"Current hour slack: {slack:.2f} hours.")
-        logger.info("Try relaxing the conditions or increasing the flexibility parameter if solver fails.")
+        report += f"MATHEMATICALLY FEASIBLE: Current hour slack is {slack:.2f} hours. If the solver still fails, constraints (like consecutivity or holidays) are clashing. You may try to increase the flexibility parameter."
+        
+    return report
 
 def output_results(status,solver,model_data):
     """
@@ -419,7 +399,8 @@ def output_results(status,solver,model_data):
 
     else: 
         logger.info("No solution found.")
-        print_feasibility_analysis(model_data)
+        analysis_report = get_feasibility_analysis(model_data)
+        logger.info(analysis_report)
     
         
     
