@@ -4,7 +4,7 @@ import scheduler_model as sm
 from ortools.sat.python import cp_model
 
 st.set_page_config(page_title="Timetable Optimizer", page_icon="📅", layout="wide")
-st.title("📅 Dani's Scheduler")
+st.title("📅 Dani's Timetable Optimizer")
 
 def time_to_minutes(time_str: str) -> int:
     """Converts a time string like '06:30' or '6:30' to minutes from midnight."""
@@ -32,7 +32,7 @@ def get_default_workers():
     return pd.DataFrame([
         {"Name": "Joseph", "Preferences": "1, 1, 3, 4", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "1,2,3", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
         {"Name": "Jotaro", "Preferences": "4, 4, 2, 1", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
-        {"Name": "Polnaref", "Preferences": "4, 3, 3, 1", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "5, 6, 7", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
+        {"Name": "Polnareff", "Preferences": "4, 3, 3, 1", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "5, 6, 7", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
         {"Name": "Avdol", "Preferences": "2, 2, 3, 1", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
         {"Name": "Kakyoin", "Preferences": "5, 1, 3, 4", "Weekly Hours": 20.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "20, 21, 22, 23", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
         {"Name": "Iggy", "Preferences": "1, 5, 2, 2", "Weekly Hours": 20.0, "Is Management": False, "Works Weekends": False, "Min 1 Weekend Off": False, "Allowed Shifts": "True, True, True, False", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},

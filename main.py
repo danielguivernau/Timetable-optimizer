@@ -56,7 +56,7 @@ w2 = sm.Worker(
 )
 
 w3 = sm.Worker(
-    name="Polnaref", 
+    name="Polnareff", 
     preferences=[4, 3, 3, 1], 
     weekly_hours=40.0,
     is_management=False,
