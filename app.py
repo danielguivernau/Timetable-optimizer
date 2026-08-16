@@ -22,22 +22,22 @@ def time_to_minutes(time_str: str) -> int:
 # In a real app, you might load this from a saved CSV database
 def get_default_shifts():
     return pd.DataFrame([
-        {"Name": "Morning", "Start Time": "07:00", "End Time": "15:00", "Workers Req": 1},
-        {"Name": "Morning 2", "Start Time": "10:30", "End Time": "18:30", "Workers Req": 1},
-        {"Name": "Evening", "Start Time": "15:00", "End Time": "23:00", "Workers Req": 1},
-        {"Name": "Night", "Start Time": "23:00", "End Time": "07:00", "Workers Req": 1},
+        {"Name": "Morning", "Start Time": "07:00", "End Time": "15:00", "Workers Required": 1},
+        {"Name": "Morning 2", "Start Time": "10:30", "End Time": "18:30", "Workers Required": 1},
+        {"Name": "Evening", "Start Time": "15:00", "End Time": "23:00", "Workers Required": 1},
+        {"Name": "Night", "Start Time": "23:00", "End Time": "07:00", "Workers Required": 1},
     ])
 
 def get_default_workers():
     return pd.DataFrame([
-        {"Name": "Joseph", "Preferences": "1, 1, 3, 4", "Weekly Hrs": 40.0, "Is Mgmt": False, "Works Wknds": True, "Min 1 Wknd Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "1,2,3", "Break Hrs": 12, "Max Works": 6, "Min Breaks": 2},
-        {"Name": "Jotaro", "Preferences": "4, 4, 2, 1", "Weekly Hrs": 40.0, "Is Mgmt": False, "Works Wknds": True, "Min 1 Wknd Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "", "Break Hrs": 12, "Max Works": 6, "Min Breaks": 2},
-        {"Name": "Polnaref", "Preferences": "4, 3, 3, 1", "Weekly Hrs": 40.0, "Is Mgmt": False, "Works Wknds": True, "Min 1 Wknd Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "5, 6, 7", "Break Hrs": 12, "Max Works": 6, "Min Breaks": 2},
-        {"Name": "Avdol", "Preferences": "2, 2, 3, 1", "Weekly Hrs": 40.0, "Is Mgmt": False, "Works Wknds": True, "Min 1 Wknd Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "", "Break Hrs": 12, "Max Works": 6, "Min Breaks": 2},
-        {"Name": "Kakyoin", "Preferences": "5, 1, 3, 4", "Weekly Hrs": 20.0, "Is Mgmt": False, "Works Wknds": True, "Min 1 Wknd Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "20, 21, 22, 23", "Break Hrs": 12, "Max Works": 6, "Min Breaks": 2},
-        {"Name": "Iggy", "Preferences": "1, 5, 2, 2", "Weekly Hrs": 20.0, "Is Mgmt": False, "Works Wknds": False, "Min 1 Wknd Off": False, "Allowed Shifts": "True, True, True, False", "Holidays": "", "Break Hrs": 12, "Max Works": 6, "Min Breaks": 2},
-        {"Name": "Suzi", "Preferences": "1, 1, 2, 4", "Weekly Hrs": 20.0, "Is Mgmt": False, "Works Wknds": True, "Min 1 Wknd Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "", "Break Hrs": 12, "Max Works": 6, "Min Breaks": 2},
-        {"Name": "Dio", "Preferences": "3, 1, 2, 0", "Weekly Hrs": 0.0, "Is Mgmt": True, "Works Wknds": True, "Min 1 Wknd Off": False, "Allowed Shifts": "True, True, True, False", "Holidays": "", "Break Hrs": 12, "Max Works": 6, "Min Breaks": 2}
+        {"Name": "Joseph", "Preferences": "1, 1, 3, 4", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "1,2,3", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
+        {"Name": "Jotaro", "Preferences": "4, 4, 2, 1", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
+        {"Name": "Polnaref", "Preferences": "4, 3, 3, 1", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "5, 6, 7", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
+        {"Name": "Avdol", "Preferences": "2, 2, 3, 1", "Weekly Hours": 40.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
+        {"Name": "Kakyoin", "Preferences": "5, 1, 3, 4", "Weekly Hours": 20.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "20, 21, 22, 23", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
+        {"Name": "Iggy", "Preferences": "1, 5, 2, 2", "Weekly Hours": 20.0, "Is Management": False, "Works Weekends": False, "Min 1 Weekend Off": False, "Allowed Shifts": "True, True, True, False", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
+        {"Name": "Suzi", "Preferences": "1, 1, 2, 4", "Weekly Hours": 20.0, "Is Management": False, "Works Weekends": True, "Min 1 Weekend Off": True, "Allowed Shifts": "True, True, True, True", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2},
+        {"Name": "Dio", "Preferences": "3, 1, 2, 0", "Weekly Hours": 0.0, "Is Management": True, "Works Weekends": True, "Min 1 Weekend Off": False, "Allowed Shifts": "True, True, True, False", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2}
     ])
 
 # --- UI Setup: Tabs ---
@@ -49,7 +49,7 @@ with tab1:
         st.subheader("Global Configuration")
         year = st.number_input("Year", min_value=2024, max_value=2030, value=2026)
         month = st.number_input("Month", min_value=1, max_value=12, value=4)
-        flexibility = st.slider("Flexibility (Number of shifts per month)", min_value=0, max_value=5, value=1)
+        flexibility = st.slider("Flexibility (Number of shifts each worker can deviate from their monthly hours target)", min_value=0, max_value=5, value=1)
         max_minutes = st.number_input("Time limit for the solver to run (Minutes)", min_value=1, max_value=10, value=1)
     
     with col2:
@@ -59,7 +59,26 @@ with tab1:
 
 with tab2:
     st.subheader("Worker Configuration")
-    st.markdown("Enter preferences and allowed shifts as comma-separated values (e.g., `1,1,3,4`). Make sure to include as many terms as shifts you defined in the previous page.")
+
+    with st.content_expander("What do these columns mean?") if hasattr(st, "content_expander") else st.expander("What do these columns mean?"):
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("""
+            * Preferences: A comma-separated list of scores (positive integers) for each shift type (ordered by start date). The lower the score the better, so workers may rank shifts by preference.
+            * Weekly Hours: The target number of hours this employee should work per week.
+            * Is Management: Whether the worker is management. Management roles bypass standard hourly targets and are only included in the schedule if absolutely necessary.
+            * Works Weekends: Whether the worker is available to work on Saturdays and Sundays.
+            * Min 1 Weekend Off: Ensures the worker gets at least one full weekend off during the month.
+            """)
+        with col_b:
+            st.markdown("""
+            * Allowed Shifts: A comma-separated list of `True/False` values indicating which shifts (ordered by start date) the worker can work.
+            * Holidays: A comma-separated list of the specific days of the month where the worker is completely unavailable.
+            * Break Hours: Minimum rest hours required between finishing one shift and starting another.
+            * Max Works: The maximum number of consecutive days a worker can be scheduled to work.
+            * Min Breaks: The minimum number of consecutive break days required once a worker starts their rest period.
+            """)
+
     edited_workers_df = st.data_editor(get_default_workers(), num_rows="dynamic", use_container_width=True)
 
 with tab3:
@@ -78,7 +97,7 @@ with tab3:
                         name=row["Name"], 
                         start=start_mins, 
                         end=end_mins, 
-                        workers_required=int(row["Workers Req"])
+                        workers_required=int(row["Workers Required"])
                     ))
                 shifts = sorted(shifts, key=lambda s: s.start)
 
@@ -92,13 +111,13 @@ with tab3:
                     workers.append(sm.Worker(
                         name=row["Name"],
                         preferences=prefs,
-                        weekly_hours=None if row["Is Mgmt"] else float(row["Weekly Hrs"]),
-                        is_management=bool(row["Is Mgmt"]),
-                        works_weekends=bool(row["Works Wknds"]),
-                        min_one_weekend_off=bool(row["Min 1 Wknd Off"]),
+                        weekly_hours=None if row["Is Management"] else float(row["Weekly Hours"]),
+                        is_management=bool(row["Is Management"]),
+                        works_weekends=bool(row["Works Weekends"]),
+                        min_one_weekend_off=bool(row["Min 1 Weekend Off"]),
                         allowed_shifts=allowed,
                         holidays=hols if hols else None,
-                        break_hours=int(row["Break Hrs"]),
+                        break_hours=int(row["Break Hours"]),
                         max_consec_works=int(row["Max Works"]) if pd.notna(row["Max Works"]) else None,
                         min_consec_breaks=int(row["Min Breaks"]) if pd.notna(row["Min Breaks"]) else None
                     ))

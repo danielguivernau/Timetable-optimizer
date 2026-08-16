@@ -7,9 +7,7 @@ I have included some particularities that might only apply to hotels (or perhaps
 
 # How to use it
 
-This program is given data describing the shifts, workers (and their contractual obligations), and for a given month, outputs, if possible, the schedule that maximizes worker preferences.
-
-This section will be further developed in the future when a frontend is decided on.
+You may run the app through it's streamlit interface by clicking on this [link](https://danis-timetable-optimizer.streamlit.app/). Otherwise, you can load this repository on your computer and run `main.py` after including your own data there.
 
 # How it works
 
