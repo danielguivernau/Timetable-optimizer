@@ -68,3 +68,32 @@ Before these parameters hit the CP-SAT constraint engine, they are parsed by thr
 *   **`monthdata(year, month)`:** Uses Python's calendar utilities to generate the month's duration and maps days to weekday integer coordinates (where Monday = 0, Sunday = 6).
 *   **`calculate_shifts_incompatibilities(list[Shift], Worker.break_hours)`:** Dynamically translates the raw `break_hours` requirement into an absolute minute matrix, defining exactly how many subsequent shift slots must be locked out after a specific assignment.
 *   **`get_consecutivity_automaton_data(Worker.min_consec_breaks, Worker.max_consec_works)`:** Takes the consecutive limits and maps them into a structural **Finite State Automaton**. This creates an explicit layout of valid worker paths (working states, a mandatory break corridor, and stable rest states) that the solver enforces via a sequence tracking constraint.
+
+### The Optimization Model (CP-SAT)
+
+Given the data described above, the program relies on Google OR-Tools' Constraint Programming solver (`cp_model.CpModel`) to build and solve the scheduling problem. The model formulation is divided into variables, constraints, an objective function, and the solver parameters.
+
+#### 1. Variables
+The engine tracks the schedule using a multidimensional matrix of boolean variables generated via `model.NewBoolVar()`:
+*   **Shift assignments (`x[i, s]`):** A boolean determining whether worker `i` is assigned to a specific shift slot `s`. 
+*   **Daily attendance (`work_day[i, d]`):** A boolean tracking if a worker is scheduled for *any* shift on calendar day `d`. This is linked to the shift assignments using `model.AddMaxEquality()`.
+*   **Weekend tracking (`is_weekend_off[i, d]`):** A boolean tracking whether a worker has a fully free weekend, contingent on neither Saturday nor Sunday having active `work_day` assignments.
+
+#### 2. Constraints
+To ensure the schedule respects the contractual obligations of all workers and fullfills all the shifts' needs, the script translates our rules into strict mathematical boundaries using `model.Add()`:
+*   **Strict coverage:** The sum of workers assigned to any given shift slot must exactly equal its `workers_required` parameter.
+*   **Single daily shift:** The sum of shifts assigned to a single worker on any given calendar day must be less than or equal to 1. This condition will generally be made redundant by a normal `Worker.break_hours` parameter.
+*   **Mandatory rest:** Using the calculated incompatibilities matrix, the model limits the sum of assigned shifts within a worker's `break_hours` window to a maximum of 1.
+*   **Consecutivity automaton:** If consecutive rules are defined, the program uses CP-SAT's specialized `model.AddAutomaton()` constraint. This forces the worker's schedule to follow the valid state transitions (working days, break corridors, and stable rest) mapped during pre-processing.
+*   **Target hours:** The total length of all shifts assigned to a standard worker is bounded between a minimum and maximum minute threshold. This threshold is centered on their `weekly_hours` target and padded by the `flexibility` parameter.
+*   **Absences & permissions:** If a shift type is restricted in a worker's `allowed_shifts`, scheduled on a worker's `holidays`, or falls on a weekend for a worker with `works_weekends == False`, the model hardcodes that specific assignment variable to 0.
+
+#### 3. Objective Function
+We use an objective function defined through `model.Minimize()`:
+*   **Preference Scoring:** Every potential shift assignment is multiplied by the worker's `preferences` rating for that shift. The solver actively seeks a timetable that results in the lowest possible overall score.
+*   **Management Penalties:** To ensure managers are only scheduled as a last resort, the script calculates the highest preference penalty among regular staff, doubles it, and adds it to the management's base preferences. This mathematically guarantees that assigning a shift to management is always the most "expensive" decision the solver can make.
+
+#### 4. Solving the Model
+Once constructed, the model is passed to `cp_model.CpSolver()`:
+*   **Gap Limit:** The solver is instructed to stop searching if it finds a schedule that is within a 15% relative gap limit of the theoretical mathematical optimum[cite: 4].
+*   **Time Limit:** If the problem is highly complex, the search process is strictly capped by the user-defined `max_fitting_minutes` parameter[cite: 4].
