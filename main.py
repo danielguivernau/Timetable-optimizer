@@ -70,7 +70,7 @@ w3 = sm.Worker(
     )
 
 w4 = sm.Worker(
-    name=f"Abdol", 
+    name=f"Avdol", 
     preferences=[2, 2, 3, 1],
     weekly_hours=40,
     is_management=False,
@@ -112,8 +112,23 @@ w5 = sm.Worker(
     )
 
 w6 = sm.Worker(
+    name=f"Suzi", 
+    preferences=[1, 1, 2, 4],
+    weekly_hours=40,
+    is_management=False,
+    works_weekends=True,      
+    min_one_weekend_off=True,     
+    allowed_shifts=[True,True,True,True],
+    holidays=None,
+    break_hours=12,
+    max_consec_works = 6,
+    min_consec_breaks = 2
+    )
+
+w7 = sm.Worker(
     name=f"Dio", 
     preferences=[20, 20, 20, 20],
+    weekly_hours=None,
     is_management=True,
     works_weekends=True,      
     min_one_weekend_off=False,     
@@ -124,7 +139,7 @@ w6 = sm.Worker(
     min_consec_breaks = 2
     )
 
-workers = [w1,w2,w3,w4,w5,w6]
+workers = [w1,w2,w3,w4,w5,w6,w7]
 
 # 4. Build and Solve the Model
 logging.info("Building the model...")

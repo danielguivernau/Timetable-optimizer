@@ -28,15 +28,15 @@ class Shift:
 class Worker:
     name: str
     preferences: list[int]
-    weekly_hours: Optional[int] = None
-    is_management: bool = False
-    works_weekends: bool = True
-    min_one_weekend_off: bool = True
-    allowed_shifts: list[bool] = None #If it is empty, they can work any shift
-    holidays: list[int] = None
-    break_hours: Optional[int] = None
-    max_consec_works: Optional[int] = None
-    min_consec_breaks: Optional[int] = None
+    weekly_hours: Optional[int]
+    is_management: bool
+    works_weekends: bool
+    min_one_weekend_off: bool
+    allowed_shifts: list[bool] 
+    holidays: list[int]
+    break_hours: Optional[int]
+    max_consec_works: Optional[int]
+    min_consec_breaks: Optional[int]
 
     def get_target_minutes(self, num_days: int) -> float:
         """Returns the hours this worker should work on a month with num_days days"""
@@ -250,7 +250,18 @@ def define_model(
                 model.Add(work_day[i, hol_ind-1] == 0)
 
     # Objective function
-    objective_terms = [x[i, s] * worker.preferences[s % num_shifts] for i, worker in enumerate(workers) for s in range(num_slots)]
+
+    # Increase management preferences so they are only included if necessary
+    max_regular_preference = max(max(w.preferences) for w in workers if not w.is_management) if any(not w.is_management for w in workers) else 0
+
+    objective_terms = []
+    for i, worker in enumerate(workers):
+        for s in range(num_slots):
+            shift_pref = worker.preferences[s % num_shifts]
+            if worker.is_management:
+                shift_pref += max_regular_preference * 2
+            objective_terms.append(x[i, s] * shift_pref)
+
     model.Minimize(sum(objective_terms))
 
     return {
