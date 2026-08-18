@@ -7,7 +7,7 @@ I have included some particularities that might only apply to hotels (or perhaps
 
 # How to use it
 
-You may run the app through its streamlit interface by clicking on this [link](https://danis-timetable-optimizer.streamlit.app/). Otherwise, you can load this repository on your computer and run `main.py` after including your own data there.
+You may run the app through its streamlit interface (which is defined in `app.py`) by clicking on this [link](https://danis-timetable-optimizer.streamlit.app/). Otherwise, you can load this repository on your computer and run `main.py` after including your own data there.
 
 # How it works
 
@@ -93,5 +93,5 @@ We use an objective function defined through `model.Minimize()`:
 
 #### 4. Solving the Model
 Once constructed, the model is passed to `cp_model.CpSolver()`:
-*   **Gap Limit:** The solver is instructed to stop searching if it finds a schedule that is within a 15% relative gap limit of the theoretical mathematical optimum[cite: 4].
-*   **Time Limit:** If the problem is highly complex, the search process is strictly capped by the user-defined `max_fitting_minutes` parameter[cite: 4].
+*   **Gap Limit:** The solver is instructed to stop searching if it finds a schedule that is within a 15% relative gap limit of the theoretical mathematical optimum.
+*   **Time Limit:** If the problem is highly complex, the search process is strictly capped by the user-defined `max_fitting_minutes` parameter.

@@ -18,8 +18,18 @@ def time_to_minutes(time_str: str) -> int:
     except (ValueError, IndexError):
         raise ValueError(f"Invalid time format: '{time_str}'. Please use HH:MM format (e.g., 14:30).")
 
-# --- Default Data Generators ---
-# In a real app, you might load this from a saved CSV database
+def on_roster_upload():
+    """Callback triggered whenever a file is uploaded to the roster uploader."""
+    uploaded_file = st.session_state.get("roster_file_uploader")
+    if uploaded_file is not None:
+        try:
+            st.session_state["workers_df"] = pd.read_csv(uploaded_file).fillna("")
+            st.session_state["upload_error"] = None
+            st.session_state["editor_version"] = st.session_state.get("editor_version", 0) + 1
+        except Exception as e:
+            st.session_state["upload_error"] = str(e)
+
+# Default data values
 def get_default_shifts():
     return pd.DataFrame([
         {"Name": "Morning", "Start Time": "07:00", "End Time": "15:00", "Workers Required": 1},
@@ -40,17 +50,28 @@ def get_default_workers():
         {"Name": "Dio", "Preferences": "3, 1, 2, 0", "Weekly Hours": 0.0, "Is Management": True, "Works Weekends": True, "Min 1 Weekend Off": False, "Allowed Shifts": "True, True, True, False", "Holidays": "", "Break Hours": 12, "Max Works": 6, "Min Breaks": 2}
     ])
 
-# --- UI Setup: Tabs ---
+# Tabs
 tab1, tab2, tab3 = st.tabs(["Global Settings & Shifts", "Workers", "Generate Schedule"])
 
 with tab1:
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1, 2])
+    
     with col1:
-        st.subheader("Global Configuration")
+        st.subheader("Global configuration")
         year = st.number_input("Year", min_value=2024, max_value=2030, value=2026)
-        month = st.number_input("Month", min_value=1, max_value=12, value=4)
-        flexibility = st.slider("Flexibility (Number of shifts each worker can deviate from their monthly hours target)", min_value=0, max_value=5, value=1)
-        max_minutes = st.number_input("Time limit for the solver to run (Minutes)", min_value=1, max_value=10, value=1)
+        month = st.number_input("Month", min_value=1, max_value=12, value=9)
+        flexibility = st.slider(
+            "Flexibility (Number of shifts each worker can deviate from their monthly hours target)", 
+            min_value=0, 
+            max_value=5, 
+            value=1
+        )
+        max_minutes = st.number_input(
+            "Time limit for the solver to run (Minutes)", 
+            min_value=1, 
+            max_value=10, 
+            value=1
+        )
     
     with col2:
         st.subheader("Shifts")
@@ -58,8 +79,9 @@ with tab1:
         edited_shifts_df = st.data_editor(get_default_shifts(), num_rows="dynamic", use_container_width=True)
 
 with tab2:
-    st.subheader("Worker Configuration")
+    st.subheader("Worker configuration")
 
+    # Column hint dropdown
     with st.content_expander("What do these columns mean?") if hasattr(st, "content_expander") else st.expander("What do these columns mean?"):
         col_a, col_b = st.columns(2)
         with col_a:
@@ -79,11 +101,49 @@ with tab2:
             * Min Breaks: The minimum number of consecutive break days required once a worker starts their rest period.
             """)
 
-    edited_workers_df = st.data_editor(get_default_workers(), num_rows="dynamic", use_container_width=True)
+    # Session state initialization
+    if "workers_df" not in st.session_state:
+        st.session_state["workers_df"] = get_default_workers()
+
+    if "editor_version" not in st.session_state:
+        st.session_state["editor_version"] = 0
+
+    if st.session_state.get("upload_error"):
+        st.error(f"Error reading CSV file: {st.session_state['upload_error']}")
+
+    # Interactive Data Editor Table
+    edited_workers_df = st.data_editor(
+        st.session_state["workers_df"], 
+        num_rows="dynamic", 
+        use_container_width=True,
+        key=f"workers_editor_{st.session_state['editor_version']}"
+    )
+
+    # Upload - Download buttons
+    col_upload, col_download = st.columns(2)
+
+    with col_upload:
+        st.file_uploader(
+            "📂 Upload saved configuration (CSV)", 
+            type=["csv"], 
+            help="Upload a worker configuration CSV from a previous month",
+            key="roster_file_uploader",
+            on_change=on_roster_upload
+        )
+
+    with col_download:
+        st.markdown("<br>", unsafe_allow_html=True) # Align with upload box
+        st.download_button(
+            label="💾 Download current configuration (CSV)",
+            data=edited_workers_df.to_csv(index=False).encode('utf-8'),
+            file_name="worker_roster.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
 
 with tab3:
-    st.subheader("Run the Solver")
-    if st.button("Generate Schedule", type="primary", use_container_width=True):
+    st.subheader("Run the solver")
+    if st.button("Generate schedule", type="primary", use_container_width=True):
         with st.spinner("Compiling data and running optimization..."):
             
             try:
@@ -103,7 +163,6 @@ with tab3:
 
                 workers = []
                 for _, row in edited_workers_df.iterrows():
-                    # Helper to parse comma-separated strings
                     prefs = [int(x.strip()) for x in str(row["Preferences"]).split(",")]
                     allowed = [x.strip().lower() == 'true' for x in str(row["Allowed Shifts"]).split(",")]
                     hols = [int(x.strip()) for x in str(row["Holidays"]).split(",") if x.strip()]
@@ -130,12 +189,12 @@ with tab3:
                 if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
                     sm.output_results(status, solver, model_data) # Generates the CSV locally
                                         
-                    st.success(f"Success! Status: **{solver.StatusName(status)}** | Total Penalty Score: **{solver.ObjectiveValue()}**")
+                    st.success(f"Success! Status: **{solver.StatusName(status)}** | Total penalty score: **{solver.ObjectiveValue()}**")
                     if status == cp_model.FEASIBLE: 
                         st.info("The solver has managed to obtain a feasable solution but it cannot guarantee its optimality. You may increase the time limit in the first page.")
 
                     # Extract and display individual worker performance summaries
-                    st.subheader("Worker Summary")
+                    st.subheader("Worker summary")
                     summary_data = []
                     
                     num_slots = model_data["num_slots"]
@@ -172,13 +231,13 @@ with tab3:
                     summary_df = pd.DataFrame(summary_data)
                     st.dataframe(summary_df, use_container_width=True, hide_index=True)
                     
-                    # --- Main Timetable Grid ---
-                    st.subheader("Monthly Timetable Grid")
+                    # Main grid
+                    st.subheader("Monthly generated timetable")
                     df_results = pd.read_csv("results.csv", index_col=0)
                     st.dataframe(df_results, use_container_width=True)
                     
                     st.download_button(
-                        label="📥 Download Timetable (CSV)",
+                        label="💾 Download generated timetable (CSV)",
                         data=df_results.to_csv().encode('utf-8'),
                         file_name=f"schedule_{year}_{month}.csv",
                         mime="text/csv",
