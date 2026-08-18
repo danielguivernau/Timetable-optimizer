@@ -86,12 +86,12 @@ To ensure the schedule respects the contractual obligations of all workers and f
 *   **Target hours:** The total length of all shifts assigned to a standard worker is bounded between a minimum and maximum minute threshold. This threshold is centered on their `weekly_hours` target and padded by the `flexibility` parameter.
 *   **Absences & permissions:** If a shift type is restricted in a worker's `allowed_shifts`, scheduled on a worker's `holidays`, or falls on a weekend for a worker with `works_weekends == False`, the model hardcodes that specific assignment variable to 0.
 
-#### 3. Objective Function
+#### 3. Objective function
 We use an objective function defined through `model.Minimize()`:
-*   **Preference Scoring:** Every potential shift assignment is multiplied by the worker's `preferences` rating for that shift. The solver actively seeks a timetable that results in the lowest possible overall score.
-*   **Management Penalties:** To ensure managers are only scheduled as a last resort, the script calculates the highest preference penalty among regular staff, doubles it, and adds it to the management's base preferences. This mathematically guarantees that assigning a shift to management is always the most "expensive" decision the solver can make.
+*   **Preference scoring:** Every potential shift assignment is multiplied by the worker's `preferences` rating for that shift. The solver actively seeks a timetable that results in the lowest possible overall score.
+*   **Management penalties:** To ensure managers are only scheduled as a last resort, the script calculates the highest preference penalty among regular staff, doubles it, and adds it to the management's base preferences. This mathematically guarantees that assigning a shift to management is always the most "expensive" decision the solver can make.
 
-#### 4. Solving the Model
+#### 4. Solving the model
 Once constructed, the model is passed to `cp_model.CpSolver()`:
-*   **Gap Limit:** The solver is instructed to stop searching if it finds a schedule that is within a 15% relative gap limit of the theoretical mathematical optimum.
-*   **Time Limit:** If the problem is highly complex, the search process is strictly capped by the user-defined `max_fitting_minutes` parameter.
+*   **Gap limit:** The solver is instructed to stop searching if it finds a schedule that is within a 15% relative gap limit of the theoretical mathematical optimum.
+*   **Time limit:** If the problem is highly complex, the search process is strictly capped by the user-defined `max_fitting_minutes` parameter.
