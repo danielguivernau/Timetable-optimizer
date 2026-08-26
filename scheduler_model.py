@@ -1,3 +1,4 @@
+import platform
 from calendar import monthcalendar
 import pandas as pd
 from ortools.sat.python import cp_model
@@ -287,6 +288,9 @@ def fit_model(model_data, max_fitting_minutes: int|None = None):
     """
     solver = cp_model.CpSolver()
     solver.parameters.log_search_progress = True
+    if platform.system() == "Darwin":
+        solver.parameters.num_search_workers = 1
+        logger.info("macOS detected: using 1 CP-SAT search worker as to avoid unexplainable freeze.")
     solver.parameters.relative_gap_limit = 0.15 # Stop if the solution is within 15% of the theoretical best
     if max_fitting_minutes is not None:
         solver.parameters.max_time_in_seconds = max_fitting_minutes * 60 # User time limit
